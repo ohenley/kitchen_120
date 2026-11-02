@@ -85,12 +85,49 @@ for wall, length in (("south", S), ("west", SHOW_N)):
     ax.set_ylim(-2, ns["ceiling_h"] + 2); ax.set_aspect("equal"); ax.grid(True, lw=0.3)
     fig.savefig(f"{sys.argv[2]}_{wall}.png", dpi=110, bbox_inches="tight")
 
-# collision check between appliance openings and cabinets they are not meant to sit in
-print("Appliance openings:")
-for a in ns["appliances"]:
-    id_, _, wall, pos, w, h, d, z, off = a[:9]
-    print(f"  {id_:4} {wall:5} pos {pos:8.4f}  w {w:7.4f}  h {h:7.4f}  d {d:7.4f}  z {z:7.4f}  off {off:.4f}  -> ends at {pos + w:.4f}")
-print("Cabinets:")
-for c in ns["cabinets"]:
-    id_, wall, pos, w, h, d, z, kind = c[:8]
-    print(f"  {id_:13} {wall:5} {pos:8.3f} .. {pos + w:8.3f}  {kind}")
+# ---- checks: 1D along each wall. Exit code 1 on any FAIL so a commit hook can use it.
+def checks(ns):
+    fails = []
+    cabs = [c for c in ns["cabinets"]]
+    for wall in ("south", "west"):
+        run = sorted([c for c in cabs if c[1] == wall and c[7] != "wall" and not (c[7] == "zone" and "HOOD" in c[0])],
+                     key=lambda c: c[2])
+        for a, b in zip(run, run[1:]):
+            gap = b[2] - (a[2] + a[3])
+            if gap < -0.01: fails.append(f"{wall}: {a[0]} and {b[0]} overlap by {-gap:.3f}")
+            if gap > 0.01:  fails.append(f"{wall}: {gap:.3f} unaccounted between {a[0]} and {b[0]}")
+        end = run[-1][2] + run[-1][3]
+        if wall == "south":
+            # the run ends where the west run's depth begins
+            west_d = max(c[5] for c in cabs if c[1] == "west" and c[7] == "base")
+            target = ns["south_len"] - ns["west_offset"] - west_d
+            if abs(end - target) > 0.01: fails.append(f"south run ends at {end:.3f}, west run side is at {target:.3f}")
+        else:
+            opening = [o for o in ns["openings"] if o[1] == "west" and o[4] == 0]
+            if opening and end > opening[0][2] + 0.01: fails.append(f"west run ends at {end:.3f}, past the opening at {opening[0][2]}")
+    # each appliance opening sits inside the cabinet zone it belongs to
+    home = {"DW": "S_DW", "FR1": "S_FRIDGE_BAY", "FR2": "S_FRIDGE_BAY", "CT": "W_OVEN30", "OV": "W_OVEN30"}
+    byid = {c[0]: c for c in cabs}
+    for a in ns["appliances"]:
+        if a[0] not in home: continue
+        c = byid[home[a[0]]]
+        # CT may cut 3/16 into each side (the cooktop notch); everything else stays inside the 3/4 sides
+        inset = 0 if a[0] == "DW" else 0.75 - 0.1875 if a[0] == "CT" else 0.75
+        lo, hi = c[2] + inset, c[2] + c[3] - inset
+        if a[3] < lo - 0.01 or a[3] + a[4] > hi + 0.01:
+            fails.append(f"{a[0]} {a[3]:.3f}..{a[3] + a[4]:.3f} outside the interior of {c[0]} {lo:.3f}..{hi:.3f}")
+    ct = [a for a in ns["appliances"] if a[0] == "CT"][0]; ov = [a for a in ns["appliances"] if a[0] == "OV"][0]
+    if abs((ct[3] + ct[4] / 2) - (ov[3] + ov[4] / 2)) > 0.01: fails.append("cooktop and oven cutouts are not on the same centre")
+    # counter height: every base top + slab must equal counter_h
+    for c in cabs:
+        if c[7] == "base" and abs(c[6] + c[4] + ns["counter_t"] - ns["counter_h"]) > 0.01:
+            fails.append(f"{c[0]}: top of box + slab = {c[6] + c[4] + ns['counter_t']:.3f}, counter_h is {ns['counter_h']}")
+    # cooktop rear clearance to the wall finish, 2 7/8 to a combustible surface
+    rear = ns["west_counter_oh"] + ns["base_d"] - 2.75 - 19.8125 + ns["west_offset"]
+    print(f"cooktop cutout rear edge to the bare wall: {rear:.4f} (needs 2.875 to a combustible surface, after the wall finish)")
+    for f in fails: print("FAIL", f)
+    print("checks:", "PASS" if not fails else f"{len(fails)} FAIL")
+    return not fails
+
+ok = checks(ns)
+sys.exit(0 if ok else 1)

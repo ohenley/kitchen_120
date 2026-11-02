@@ -78,7 +78,7 @@ module cabinets_all() {
     }
     // Countertop over counter-height items, running back to the wall over any offset.
     if ((kind == "base" || kind == "zone" || kind == "filler") && z + h <= counter_h + 0.01) {
-      cd = off + d + counter_oh;
+      cd = off + d + (wall == "west" ? west_counter_oh : counter_oh);
       color([0.95, 0.95, 0.95])
       on_wall(wall, pos, w, cd, z + h, 0) box(w, cd, counter_t);
     }

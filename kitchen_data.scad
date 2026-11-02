@@ -16,8 +16,9 @@ south_len   = 170.5;          // [label] 82 + 36 + 52 1/2
 west_len    = 288;            // [label] 120 + 36 + 132
 counter_h   = 36;             // [choice] planner shows 4 1/2 + 30 + 1 1/8 = 35 5/8. Both satisfy the appliances, see notes.
 counter_t   = 1.125;          // [label]
-counter_oh  = 1.5;            // [choice] countertop overhang past the box front
-toe_h       = 4.5;            // [label]
+counter_oh  = 1.5;            // [choice] countertop overhang past the box front, window wall (counter 25 1/2)
+west_counter_oh = 1.5;        // [choice] oven wall counter 25 1/2, same as the window wall. Cooktop minimum is 25 3/8. Its 2 7/8 rear rule is to a COMBUSTIBLE surface; tile over drywall is not one.
+toe_h       = 4.875;          // [choice] ladder base height. 4 7/8 + 30 box + 1 1/8 slab = 36 counter. The planner had 4 1/2 legs, which gives 35 5/8.
 base_d      = 24;
 wall_d      = 15;
 west_offset = 0;              // [choice] west base run sits against the wall, 24 deep, counter 25 1/2 like the south run.
@@ -38,7 +39,7 @@ openings = [
 // ---- electrical: [id, wall, pos_centre, z, note] -------------------------
 // Countertop receptacles already in the oven wall. With the standard 12 beside the corner
 // the oven cabinet centre is 74; the receptacles land 13 and 11 1/2 from the cooktop edges.
-// Oven 240 V 30 A and cooktop 120 V are in the adjacent cabinets, not listed.
+// Oven 240 V on a separate 20 A circuit [mfr: KitchenAid manual, models 4.8 kW and below] and cooktop 120 V are in the adjacent cabinets, not listed.
 // z = 0 until the box height above the counter is measured. Nothing renders it yet.
 electrical = [
   ["OUT_W1", "west",  46.0, 0, "[label] countertop receptacle, 13 south of the cooktop edge (59), toward the window wall"],
@@ -48,37 +49,39 @@ electrical = [
 // ---- cabinets: [id, wall, pos, width, height, depth, z_bottom, kind, note] -
 // kind: base | wall | tall | filler | zone. "zone" = an opening an appliance fills.
 // Fridge bay: 3 wall filler | end panel 3/4 | FR1 opening 22 3/8 | divider 3/4 | FR2 opening 22 3/8 | end panel 3/4 = ends at 50 [label].
-// Opening 22 3/8 = 21 4/5 body + 0.2875 per side (mfr asks 3/10 per side, short by 1/64, fine). Opening height 71 = 70 case + 1 top [mfr].
+// Opening 22 3/8 = 21 4/5 body + 0.2875 per side (spec sheet asks 3/10 per side). [verify] the LG INSTALLATION manual gives the enclosure in mm
+// (reported as 570 clear with 15 mm panels, 564 with 18 mm, 1802 high, a 20 mm base, vents over 200 cm2 per unit); rebuild this bay from that document when in hand.
 cabinets = [
   // window wall (south in this file), east to west
   ["S_WALLFILL",   "south",   0.0,    3.0,  ceiling_h, 24, 0,      "filler", "[choice] 3 off the east wall, full height, scribed"],
   ["S_FRIDGE_BAY", "south",   3.0,   47.0,  71.75, 24, 0,          "tall",   "[label] bay ends at 50. 2 openings 22 3/8 x 71 x 24, 3/4 panels, 3/4 shelf on top"],
-  ["S_FRIDGE_TOP", "south",   3.0,   47.0,  ceiling_h - 71.75, 24, 71.75, "wall", "[choice] cabinet over the fridges, 24 deep"],
+  ["S_FRIDGE_TOP", "south",   3.0,   47.0,  ceiling_h - 71.75 - 0.75, 24, 71.75, "wall", "[choice] cabinet over the fridges, 24 deep, 3/4 scribe strip to the ceiling. Fridge air exit through or beside it, see LG manual"],
   ["S_B8",         "south",  50.0,    8.0,  30, 24, toe_h,         "base",   "[choice] custom pullout, what is left between the bay and the DW. DW outlet here"],
   ["S_DW",         "south",  58.0,   24.0,  30, 24, toe_h,         "zone",   "dishwasher opening, see DW"],
   ["S_SB36",       "south",  82.0,   36.0,  30, 24, toe_h,         "base",   "[label] 36 sink base, centred on WIN_S2 at 100, bowls 85 to 115 inside. No top drawer"],
   ["S_B24",        "south", 118.0,   24.0,  30, 24, toe_h,         "base",   "[label] 24 drawer base. Drainboard rides over 118 to 132 1/4"],
   ["S_GAP",        "south", 142.0,    4.5,  30, 24, toe_h,         "zone",   "[label] pull-away gap of the blind corner, under the counter. Planner: 2 3/4 + frame"],
   // oven wall (west), from the window wall
-  ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[label] SECBBP1D blind corner base, system width 50. Blind panel 0 to 23 5/8 toward the window wall, door 24 to 47. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
+  ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[choice] custom-cut blind corner box, 47 wide, built like the others. NOT the IKEA article (505.967.57 is 50 wide and would push the run past 120). Door section 24 (Bofronts standard 24 x 30), fixed blind panel 23 toward the window wall. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
   ["W_B12",        "west",   47.0,   12.0,  30, 24, toe_h,         "base",   "[label] standard 12. Oven centre lands at 74, receptacles 13 and 11 1/2 from the cooktop edges"],
-  ["W_OVEN30",     "west",   59.0,   30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 74. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, see OV"],
+  ["W_OVEN30",     "west",   59.0,   30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 74. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, sides run to the floor, see OV"],
   ["W_D30",        "west",   89.0,   30.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers, finished end toward the corridor"],
-  ["W_FILL2",      "west",  119.0,    1.0,  30, 24, toe_h,         "filler", "[choice] reveal to the opening at 120"],
+  ["W_END",        "west",  119.0,    0.75, 30, 24, toe_h,         "filler", "[choice] applied finished end panel on W_D30, Bofronts matching. Set width 0 if the prefinished ply side is the finish"],
+  ["W_FILL2",      "west",  119.75,   0.25, 30, 24, toe_h,         "filler", "[choice] reveal to the opening at 120"],
   ["W_HOOD30",     "west",   59.0,   30.0,  18, 20, 66,            "zone",   "[choice] 30 hood centred on the oven cabinet at 74. Height/depth placeholders"],
 ];
 
 // ---- appliances: [id, model, wall, pos, w, h, d, z_bottom, off, note] ---
 // Each box is the OPENING the cabinet must provide, placed like a cabinet.
 // "off" is the distance from the wall to the back of the opening.
-cutout_rear = counter_oh + base_d - 2.75 - 19.8125;   // 2 15/16, cooktop cutout rear edge from the cabinet back
+cutout_rear = west_counter_oh + base_d - 2.75 - 19.8125;   // cooktop cutout rear edge from the cabinet back
 appliances = [
   ["DW",  "Bosch SHV53D73UC",      "south",  58.0,    24.0,    34.0625, 24.0,    0,     0,
-     "[mfr] opening 23 5/8 to 24 1/4 W, 34 1/16 H min, 21 5/8 D min. Needs 120 V outlet in an ADJACENT cabinet, drain <= 92 to the sink. Custom panel."],
+     "[mfr, install manual p.9] opening 23 5/8 to 24 1/4 W, 34 1/16 H min, 21 5/8 D min. 120 V outlet in an ADJACENT cabinet (S_B8). Drain hose max 92 with a high loop at 33 min above the floor (p.9). Panel: Bofronts dishwasher panel for SEKTION, Bosch accepts 7 to 18 lb from the factory."],
   ["FR1", "LG LSBNC1021P",         "south",   3.75,   22.375,  71.0,    22.5,    0,     0.75,
      "[mfr] body 21 4/5 W x 70 H (case) x 22 1/2 D no handle, 20 3/5 D without door. Clearance 3/10 sides, 1 top. Hinge right from factory, reversible. Open 90: 24 4/5 wide, 45 3/10 deep"],
   ["FR2", "LG LSBNC1021P",         "south",  26.875,  22.375,  71.0,    22.5,    0,     0.75,
-     "[mfr] same. [choice] both hinged RIGHT. With the 3 wall filler FR1 could now be hinged left (needs 2 1/4 past the opening edge)"],
+     "[mfr] same. [choice] handles at the centre: FR1 hinged on the east (factory right, door needs 2 1/4 past its opening toward the east wall, covered by the 3/4 panel + 3 filler), FR2 reversed to hinge on the west, its door swings over S_B8. Door panels: Bofronts custom, LG panel spec, under LG's weight limit"],
   ["SINK",       "Segong SG-12050D2", "south",  85.0,  30.0, 8.5, 19.6875, counter_h - 8.5, base_d + counter_oh - 2 - 19.6875,
      "[mfr] 1200 x 500 mm top mount (rim 85 to 132 1/4), 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],
   ["SINK_DRAIN", "drainboard of SINK", "south", 115.0, 17.25, 1.5, 19.6875, counter_h - 1.5, base_d + counter_oh - 2 - 19.6875,
@@ -88,5 +91,5 @@ appliances = [
   ["CT",  "KitchenAid KCGG530PBL", "west",   59.5625, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
      "[mfr] countertop cutout 28 7/8 W x 19 13/16 D, front edge 2 3/4 behind the counter front. Burner box 28 1/4 x 19 1/4 x 3 1/4 (4 1/4 at the gas inlet, right rear). Counter >= 25 3/8 deep. 120 V outlet within 24 of the right rear corner. 34 to an uncovered cabinet above, 18 to upper cabinets within 12 3/4 either side."],
   ["OV",  "KitchenAid KOES730SBE", "west",   59.75,  28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,
-     "[mfr] under-cooktop install: cutout 28 1/2 W min x 27 3/4 H min x 24 D, bottom of cutout 31 3/8 below the countertop surface and at most 4 5/8 above the floor. 240 V 40 A junction box in an ADJACENT cabinet. Centre the cooktop cutout over the oven cutout."],
+     "[mfr] under-cooktop install: cutout 28 1/2 W min x 27 3/4 H min x 24 D, bottom of cutout 31 3/8 below the countertop surface and at most 4 5/8 above the floor. 240 V, separate 20 A circuit (manual p.12, models 4.8 kW and below), junction box in an ADJACENT cabinet. Centre the cooktop cutout over the oven cutout."],
 ];
