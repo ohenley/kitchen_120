@@ -246,9 +246,6 @@ def main():
     for c in K["cabinets"]:
         cid, wall, pos, W, H, D, z, kind = c[:8]
         rec = {"id": cid, "wall": wall, "pos": pos, "W": W, "ladder": False}
-        if kind == "filler" and "END" in cid and W > 0:
-            parts.append(Part(cid, "end_panel", D + C["ply_t"], H + C["toe_h"], C["ply_t"], "ply"))
-            continue
         if kind == "filler" or kind == "zone" and cid not in ("W_OVEN30",):
             continue
         if cid == "W_OVEN30":
@@ -286,6 +283,9 @@ def main():
             else:
                 for i, h in enumerate(fr[2]):
                     w.writerow([cid, "drawer front %d" % (i + 1), 1, "%g" % W, "%g" % h, "order undrilled; " + ("standard" if W in (12, 15, 18, 24, 30, 36) else "Bofronts custom")])
+        for c in K["cabinets"]:
+            if c[7] == "filler" and "END" in c[0] and c[3] > 0:
+                w.writerow([c[0], "cover panel", 1, "25", "35", "Bofronts base cover panel, trim to %g x %g on site (box depth + front, box + ladder)" % (c[5] + 0.75, c[4] + K["toe_h"])])
         w.writerow(["S_DW", "dishwasher panel", 1, "24", "30", "Bofronts custom, Bosch 7 to 18 lb"])
         w.writerow(["S_FRIDGE_BAY", "fridge door panel", 2, "22", "70", "Bofronts custom, LG panel spec"])
 
