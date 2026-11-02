@@ -63,8 +63,8 @@ cabinets = [
   ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[label] SECBBP1D blind corner base, system width 50. Blind panel 0 to 23 5/8 toward the window wall, door 24 to 47. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
   ["W_B11",        "west",   47.0,   11.25, 30, 24, toe_h,         "base",   "[choice] custom 11 1/4, lands the oven centre at 73 1/4. Planner shows 10 1/4 + 1 3/4 here"],
   ["W_OVEN30",     "west",   58.25,  30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 73 1/4 between the two countertop receptacles. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, see OV"],
-  ["W_D24",        "west",   88.25,  24.0,  30, 24, toe_h,         "base",   "[label] 2 drawers, finished end toward the corridor"],
-  ["W_FILL2",      "west",  112.25,   7.75, 30, 24, toe_h,         "filler", "[label] planner ends the run near 116; filler or reveal to the opening at 120"],
+  ["W_D30",        "west",   88.25,  30.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers, finished end toward the corridor"],
+  ["W_FILL2",      "west",  118.25,   1.75, 30, 24, toe_h,         "filler", "[choice] reveal to the opening at 120"],
   ["W_HOOD30",     "west",   58.25,  30.0,  18, 20, 66,            "zone",   "[choice] 30 hood centred on the oven cabinet at 73 1/4. Height/depth placeholders"],
 ];
 
