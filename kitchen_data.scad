@@ -35,30 +35,37 @@ openings = [
   ["CORR_W", "west",  120.0,  36,     0, 80],   // [label] 120 | 36 | 132. Corridor opening, no door, no casing: cabinets may run to 120
 ];
 
+// ---- electrical: [id, wall, pos_centre, z, note] -------------------------
+// Countertop receptacles already in the oven wall. The cooktop centre 73 1/4
+// comes from them: 12 1/4 beyond each edge of the 30 cooktop.
+// Oven 240 V 30 A and cooktop 120 V are in the adjacent cabinets, not listed.
+// z = 0 until the box height above the counter is measured. Nothing renders it yet.
+electrical = [
+  ["OUT_W1", "west",  46.0, 0, "[label] countertop receptacle, 12 1/4 south of the cooktop edge (58 1/4), toward the window wall"],
+  ["OUT_W2", "west", 100.5, 0, "[label] countertop receptacle, 12 1/4 north of the cooktop edge (88 1/4), toward the corridor"],
+];
+
 // ---- cabinets: [id, wall, pos, width, height, depth, z_bottom, kind, note] -
 // kind: base | wall | tall | filler | zone. "zone" = an opening an appliance fills.
 // Fridge bay: 3 wall filler | end panel 3/4 | FR1 opening 22 3/8 | divider 3/4 | FR2 opening 22 3/8 | end panel 3/4 = ends at 50 [label].
 // Opening 22 3/8 = 21 4/5 body + 0.2875 per side (mfr asks 3/10 per side, short by 1/64, fine). Opening height 71 = 70 case + 1 top [mfr].
 cabinets = [
-  // south wall, east to west
+  // window wall (south in this file), east to west
   ["S_WALLFILL",   "south",   0.0,    3.0,  ceiling_h, 24, 0,      "filler", "[choice] 3 off the east wall, full height, scribed"],
-  ["S_FRIDGE_BAY", "south",   3.0,   47.0,  71.75, 24, 0,          "tall",   "[label] bay ends at 50 from the east wall. 2 openings 22 3/8 x 71 x 24, 3/4 panels, 3/4 shelf on top"],
-  ["S_FRIDGE_TOP", "south",   3.0,   47.0,  ceiling_h - 71.75, 24, 71.75, "wall", "[choice] cabinet over the fridges, 24 deep to keep the face flush"],
-  ["S_B9",         "south",  50.0,    9.5,  30, 24, toe_h,         "base",   "[choice] what is left between the bay and the DW. DW outlet goes here. Narrow: tray/sheet-pan pullout"],
-  ["S_DW",         "south",  59.5,   24.0,  30, 24, toe_h,         "zone",   "dishwasher opening, see DW"],
-  ["S_SINK33",     "south",  83.5,   33.0,  30, 24, toe_h,         "base",   "[choice] sink base, interior 31 1/2 for the 30 bowl region, centred on WIN_S2 at 100. No top drawer"],
-  ["S_B26",        "south", 116.5,   25.875, 30, 24, toe_h,        "base",   "[choice] drawer base under the drainboard; top drawer must clear the drainboard underside, see SINK_DRAIN"],
-  ["S_FILL1",      "south", 142.375,  1.5,  30, 24, toe_h,         "filler", "[label]"],
-  ["S_CORNER",     "south", 143.875, 26.625, 30, 24, toe_h,        "zone",   "[px] corner, 26 5/8 along south x 24 deep. Corner solution undefined"],
-  // west wall, south to north
-  // the two W1D 24x15x40 wall cabinets south of the oven are dropped. A salvaged/old-style wall
-  // cabinet may go south of the hood later; nothing modelled for it yet.
-  ["W_HOOD30",     "west",   60.75,  30.0,  18, 20, 66,            "zone",   "[choice] 30 range hood over the cooktop, centred on it. Bottom 30 above the counter; height/depth are placeholders until a model is picked"],
-  ["W_D36",        "west",   24.0,   36.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers. Starts at 24 = depth of S_CORNER (planner had 22 1/2, overlapping)"],
-  ["W_FILL1",      "west",   60.0,    0.25, 30, 24, toe_h,         "filler", ""],
-  ["W_OVEN31",     "west",   60.25,  31.0,  30, 24, toe_h,         "zone",   "[choice] oven+cooktop cabinet, 31 wide. 30 is too narrow, see CT note"],
-  ["W_D28",        "west",   91.25,  28.0,  30, 24, toe_h,         "base",   "[choice] custom 28 drawer base, fills the pocket to the corridor opening (planner had a 24, which assumed a cased door). Standards alternative: 12 + 15 = 27 with a 1 3/4 filler"],
-  ["W_FILL2",      "west",  119.25,   0.75, 30, 24, toe_h,         "filler", "[choice] 3/4 reveal to the corridor opening edge at 120, scribed to the corner bead"],
+  ["S_FRIDGE_BAY", "south",   3.0,   47.0,  71.75, 24, 0,          "tall",   "[label] bay ends at 50. 2 openings 22 3/8 x 71 x 24, 3/4 panels, 3/4 shelf on top"],
+  ["S_FRIDGE_TOP", "south",   3.0,   47.0,  ceiling_h - 71.75, 24, 71.75, "wall", "[choice] cabinet over the fridges, 24 deep"],
+  ["S_B8",         "south",  50.0,    8.0,  30, 24, toe_h,         "base",   "[choice] custom pullout, what is left between the bay and the DW. DW outlet here"],
+  ["S_DW",         "south",  58.0,   24.0,  30, 24, toe_h,         "zone",   "dishwasher opening, see DW"],
+  ["S_SB36",       "south",  82.0,   36.0,  30, 24, toe_h,         "base",   "[label] 36 sink base, centred on WIN_S2 at 100, bowls 85 to 115 inside. No top drawer"],
+  ["S_B24",        "south", 118.0,   24.0,  30, 24, toe_h,         "base",   "[label] 24 drawer base. Drainboard rides over 118 to 132 1/4"],
+  ["S_GAP",        "south", 142.0,    4.5,  30, 24, toe_h,         "zone",   "[label] pull-away gap of the blind corner, under the counter. Planner: 2 3/4 + frame"],
+  // oven wall (west), from the window wall
+  ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[label] SECBBP1D blind corner base, system width 50. Blind panel 0 to 23 5/8 toward the window wall, door 24 to 47. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
+  ["W_B11",        "west",   47.0,   11.25, 30, 24, toe_h,         "base",   "[choice] custom 11 1/4, lands the oven centre at 73 1/4. Planner shows 10 1/4 + 1 3/4 here"],
+  ["W_OVEN30",     "west",   58.25,  30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 73 1/4 between the two countertop receptacles. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, see OV"],
+  ["W_D24",        "west",   88.25,  24.0,  30, 24, toe_h,         "base",   "[label] 2 drawers, finished end toward the corridor"],
+  ["W_FILL2",      "west",  112.25,   7.75, 30, 24, toe_h,         "filler", "[label] planner ends the run near 116; filler or reveal to the opening at 120"],
+  ["W_HOOD30",     "west",   58.25,  30.0,  18, 20, 66,            "zone",   "[choice] 30 hood centred on the oven cabinet at 73 1/4. Height/depth placeholders"],
 ];
 
 // ---- appliances: [id, model, wall, pos, w, h, d, z_bottom, off, note] ---
@@ -66,7 +73,7 @@ cabinets = [
 // "off" is the distance from the wall to the back of the opening.
 cutout_rear = counter_oh + base_d - 2.75 - 19.8125;   // 2 15/16, cooktop cutout rear edge from the cabinet back
 appliances = [
-  ["DW",  "Bosch SHV53D73UC",      "south",  59.5,    24.0,    34.0625, 24.0,    0,     0,
+  ["DW",  "Bosch SHV53D73UC",      "south",  58.0,    24.0,    34.0625, 24.0,    0,     0,
      "[mfr] opening 23 5/8 to 24 1/4 W, 34 1/16 H min, 21 5/8 D min. Needs 120 V outlet in an ADJACENT cabinet, drain <= 92 to the sink. Custom panel."],
   ["FR1", "LG LSBNC1021P",         "south",   3.75,   22.375,  71.0,    22.5,    0,     0.75,
      "[mfr] body 21 4/5 W x 70 H (case) x 22 1/2 D no handle, 20 3/5 D without door. Clearance 3/10 sides, 1 top. Hinge right from factory, reversible. Open 90: 24 4/5 wide, 45 3/10 deep"],
@@ -75,11 +82,11 @@ appliances = [
   ["SINK",       "Segong SG-12050D2", "south",  85.0,  30.0, 8.5, 19.6875, counter_h - 8.5, base_d + counter_oh - 2 - 19.6875,
      "[mfr] 1200 x 500 mm top mount (rim 85 to 132 1/4), 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],
   ["SINK_DRAIN", "drainboard of SINK", "south", 115.0, 17.25, 1.5, 19.6875, counter_h - 1.5, base_d + counter_oh - 2 - 19.6875,
-     "[choice] drainboard depression below the rim: 1 1/2 is a GUESS, measure. If it is deeper than the slab (1 1/8) the top drawer of S_B26 loses that much"],
+     "[choice] drainboard depression below the rim: 1 1/2 is a GUESS, measure. If it is deeper than the slab (1 1/8) the top drawer of S_B24 loses that much"],
   ["FAUCET", "Kingston Brass KS413", "south", 94.625, 10.75, 9.25, 10.3125, 37.625, -0.5,
      "[mfr] wall mount, 8 centres, union axis 39 1/2 above the SUBFLOOR (as roughed in), about 39 above the finished floor. Centred on WIN_S2 at 100. Body 10 3/4 wide incl. 2 3/4 escutcheons, 7 7/8 above axis to spout top, tip 10 5/16 from the tile face. off -0.5: the tile face above the counter sits about 1/2 in front of the cabinet-level wall. Stubs to be cut after tile (3/8 drywall + thinset + 1/4 to 1/2 tile)."],
-  ["CT",  "KitchenAid KCGG530PBL", "west",   61.3125, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
+  ["CT",  "KitchenAid KCGG530PBL", "west",   58.8125, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
      "[mfr] countertop cutout 28 7/8 W x 19 13/16 D, front edge 2 3/4 behind the counter front. Burner box 28 1/4 x 19 1/4 x 3 1/4 (4 1/4 at the gas inlet, right rear). Counter >= 25 3/8 deep. 120 V outlet within 24 of the right rear corner. 34 to an uncovered cabinet above, 18 to upper cabinets within 12 3/4 either side."],
-  ["OV",  "KitchenAid KOES730SBE", "west",   61.5,    28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,
+  ["OV",  "KitchenAid KOES730SBE", "west",   59.0,    28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,
      "[mfr] under-cooktop install: cutout 28 1/2 W min x 27 3/4 H min x 24 D, bottom of cutout 31 3/8 below the countertop surface and at most 4 5/8 above the floor. 240 V 40 A junction box in an ADJACENT cabinet. Centre the cooktop cutout over the oven cutout."],
 ];

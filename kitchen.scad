@@ -70,15 +70,11 @@ module cabinets_all() {
       box(w, d, h);
       label(id, w);
     }
-    // Countertop over counter-height items. It runs back to the wall over any offset,
-    // and the piece in the corner runs out to the counter front of the perpendicular run.
+    // Countertop over counter-height items, running back to the wall over any offset.
     if ((kind == "base" || kind == "zone" || kind == "filler") && z + h <= counter_h + 0.01) {
-      at_corner = (wall == "south" && abs(pos + w - south_len) < 0.01);
-      cw   = at_corner ? max(w, west_offset + base_d + counter_oh) : w;
-      cpos = at_corner ? south_len - cw : pos;
-      cd   = off + d + counter_oh;
+      cd = off + d + counter_oh;
       color([0.95, 0.95, 0.95])
-      on_wall(wall, cpos, cw, cd, z + h, 0) box(cw, cd, counter_t);
+      on_wall(wall, pos, w, cd, z + h, 0) box(w, cd, counter_t);
     }
   }
 }
