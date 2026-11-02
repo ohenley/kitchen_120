@@ -201,11 +201,53 @@ def drawer_boxes(C, cab, W, heights, parts):
         parts.append(fb)
         parts.append(Part(cab, tag + "_bottom", C["box_depth"] - 2 * t + 2 * 0.25, bw - 2 * t + 2 * 0.25, bt, "bb"))
 
-def fridge_bay(C, cab, W, H, D, parts):
-    t = C["ply_t"]
-    parts.append(Part(cab, "end_panel", D, H, t, "ply", 2))
-    parts.append(Part(cab, "divider", D, H - t, t, "ply"))
-    parts.append(Part(cab, "shelf", D, W - 2 * t + 2 * C["dado_depth"], t, "ply"))
+def fridge_bay(C, cab, W, H, D, parts, openings):
+    """The bay is a box: 2 end panels finger-jointed to a floor slab and a shelf (fingers along the
+    depth, like a carcass), one divider with tabs into through slots in floor and shelf, a toe board
+    with a grille opening per unit, a vented strip at the ceiling. openings: (pos_in_bay, width) from
+    the bay's east end, panels included."""
+    t, fw, bit = C["ply_t"], C["finger_w"], C["bit_d"]
+    inner = W - 2 * t
+    end = Part(cab, "end_panel", D, H, t, "ply", 2)
+    end.fingers({"bottom": (t, fw, True), "top": (t, fw, True)}, bit)
+    end.note("goes to the wall; closes the air channel at the sides")
+    parts.append(end)
+    floor = Part(cab, "floor", D, W, t, "ply"); floor.fingers({"bottom": (t, fw, False), "top": (t, fw, False)}, bit)
+    shelf = Part(cab, "shelf", D, W, t, "ply"); shelf.fingers({"bottom": (t, fw, False), "top": (t, fw, False)}, bit)
+    toe = Part(cab, "toe_board", W, K_toe, t, "ply")
+    for (o, ow) in openings:
+        # slab frame: x = depth (0 = front), y = along the bay from the east end
+        floor.pocket(D - C["fr_notch_d"], o + C["fr_notch_from"], C["fr_notch_d"], C["fr_notch_w"], "THROUGH notch, air up behind the unit [mfr 190 x 220 mm]")
+        shelf.pocket(D - C["fr_top_slot_d"], o + ow / 2 - C["fr_top_slot_w"] / 2, C["fr_top_slot_d"], C["fr_top_slot_w"], "THROUGH slot, exhaust [mfr 400 x 50 mm]")
+        toe.pocket(o + ow / 2 - C["fr_toe_grille_w"] / 2, (K_toe - C["fr_toe_grille_h"]) / 2, C["fr_toe_grille_w"], C["fr_toe_grille_h"], "THROUGH grille opening [mfr 404 x 51 mm]")
+    # divider: tabs top and bottom into through slots in floor and shelf
+    div_y = openings[0][0] + openings[0][1]          # east face of the divider, from the bay's east end
+    div = Part(cab, "divider", D, H - 2 * t + 2 * t, t, "ply")   # tabs add t at each end
+    n = 3
+    for q in (floor, shelf):
+        for i in range(n):
+            x = (i + 0.5) * D / n - C["fr_tab_w"] / 2
+            q.pocket(x, div_y, C["fr_tab_w"], t, "THROUGH slot for the divider tab")
+    # divider outline: tabs where the slots are, notched elsewhere (depth t) on top and bottom edges
+    pts = []
+    L = D
+    def tabbed(y_base, direction):
+        out = []
+        xs = sorted([((i + 0.5) * L / n - C["fr_tab_w"] / 2, (i + 0.5) * L / n + C["fr_tab_w"] / 2) for i in range(n)])
+        x = 0.0
+        for (a, b) in xs:
+            out += [(x, y_base - direction * t), (a, y_base - direction * t), (a, y_base), (b, y_base), (b, y_base - direction * t)]
+            x = b
+        out.append((L, y_base - direction * t))
+        return out
+    Hd = H - 2 * t + 2 * t
+    bottom = tabbed(0, +1)                          # y = 0 at tab tips, notches at y = t
+    top = [(x, Hd - y) for (x, y) in tabbed(0, +1)] # mirror for the top edge
+    div.poly = bottom + list(reversed(top))
+    div.note("tabs 3 x 3/4 into the floor and shelf slots, glued")
+    parts.append(div)
+    parts.append(floor); parts.append(shelf); parts.append(toe)
+    parts.append(Part(cab, "ceiling_vent_strip", W, C["fr_top_vent"], t, "ply"))
 
 def ladders(C, cabs, parts):
     """One ladder per contiguous run of ladder-kind boxes on a wall."""
@@ -237,6 +279,8 @@ def main():
     C = read_scad(sys.argv[2], K)
     out = sys.argv[3]; os.makedirs(out, exist_ok=True)
     C["base_d"] = K["base_d"]
+    global K_toe
+    K_toe = K["toe_h"]
     # oven opening floor above the finished floor, from the OV appliance line
     ov = [a for a in K["appliances"] if a[0] == "OV"][0]
     C["ov_floor"] = ov[7]
@@ -251,7 +295,9 @@ def main():
         if cid == "W_OVEN30":
             carcass(C, cid, W, H, D, kind, "oven", parts)
         elif kind == "tall":
-            fridge_bay(C, cid, W, H, D, parts)
+            frs = sorted([(a[3] - pos, a[4]) for a in K["appliances"] if a[0].startswith("FR")])
+            fridge_bay(C, cid, W, H, D, parts, frs)
+            rec["ladder"] = True
         elif kind == "wall":
             carcass(C, cid, W, H, D, kind, "wall", parts)
         elif kind == "base":
@@ -320,7 +366,9 @@ def main():
         f.write("3/4 ply: %.1f sq ft, about %d sheets at 80%% yield\n" % (area / 144, math.ceil(area / sheet / 0.8)))
         f.write("5/8 Baltic birch: %.1f sq ft, about %d sheets\n" % (area_bb / 144, math.ceil(area_bb / sheet / 0.8)))
         f.write("1/4 Baltic birch: %.1f sq ft, about %d sheets\n" % (area_bot / 144, math.ceil(area_bot / sheet / 0.8)))
-        f.write("\nfridge bay: panels only. Base, vent openings and panel fixing wait for the LG installation manual.\n")
+        f.write("\nfridge bay: built to the LG spec sheet cabinet figure (toe grille 404x51, floor notch 190x220, top slot 400x50, 50 mm channel).\n"
+                "  Fridge door panel heights (fridge section) still need the full LG install manual.\n"
+                "  Ladder under the bay: put the cross pieces under the end panels and the divider only, so air runs from each toe grille to its floor notch.\n")
         f.write("set ply_t in construction.scad to the measured sheet thickness (18 mm or 23/32 is usual); drawer box widths depend on it.\n")
         f.write("\nNumbers tagged [verify] in construction.scad, measure before cutting:\n")
         for v in verify: f.write("  " + v + "\n")

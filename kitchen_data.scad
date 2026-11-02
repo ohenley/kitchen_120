@@ -11,7 +11,7 @@
 //   [choice]  a design decision taken here, to be confirmed
 
 // ---- room ------------------------------------------------------------
-ceiling_h   = 96;             // [label]
+ceiling_h   = 94;             // [label] measured, planner had 96
 south_len   = 170.5;          // [label] 82 + 36 + 52 1/2
 west_len    = 288;            // [label] 120 + 36 + 132
 counter_h   = 36;             // [choice] planner shows 4 1/2 + 30 + 1 1/8 = 35 5/8. Both satisfy the appliances, see notes.
@@ -48,15 +48,15 @@ electrical = [
 
 // ---- cabinets: [id, wall, pos, width, height, depth, z_bottom, kind, note] -
 // kind: base | wall | tall | filler | zone. "zone" = an opening an appliance fills.
-// Fridge bay: 3 wall filler | end panel 3/4 | FR1 opening 22 3/8 | divider 3/4 | FR2 opening 22 3/8 | end panel 3/4 = ends at 50 [label].
-// Opening 22 3/8 = 21 4/5 body + 0.2875 per side (spec sheet asks 3/10 per side). [verify] the LG INSTALLATION manual gives the enclosure in mm
-// (reported as 570 clear with 15 mm panels, 564 with 18 mm, 1802 high, a 20 mm base, vents over 200 cm2 per unit); rebuild this bay from that document when in hand.
+// Fridge bay [mfr, LG spec sheet p.2 cabinet figure]: 3 wall filler | end panel 3/4 | FR1 opening 570 mm = 22 7/16 | divider 3/4 | FR2 opening 22 7/16 | end panel 3/4 = ends at 50 1/8.
+// Clear height 1802 mm = 70 15/16 (71 used) above a raised floor; 50 mm channel behind the unit; floor notch, toe grille and top slot sizes in construction.scad.
+// Bay depth 25 1/4 = 2 channel + 22 1/2 body + 3/4 panel, panel face flush with the bay front, 1/2 proud of the drawer fronts.
 cabinets = [
   // window wall (south in this file), east to west
   ["S_WALLFILL",   "south",   0.0,    3.0,  ceiling_h, 24, 0,      "filler", "[choice] 3 off the east wall, full height, scribed"],
-  ["S_FRIDGE_BAY", "south",   3.0,   47.0,  71.75, 24, 0,          "tall",   "[label] bay ends at 50. 2 openings 22 3/8 x 71 x 24, 3/4 panels, 3/4 shelf on top"],
-  ["S_FRIDGE_TOP", "south",   3.0,   47.0,  ceiling_h - 71.75 - 0.75, 24, 71.75, "wall", "[choice] cabinet over the fridges, 24 deep, 3/4 scribe strip to the ceiling. Fridge air exit through or beside it, see LG manual"],
-  ["S_B8",         "south",  50.0,    8.0,  30, 24, toe_h,         "base",   "[choice] custom pullout, what is left between the bay and the DW. DW outlet here"],
+  ["S_FRIDGE_BAY", "south",   3.0,   47.125, 77.375, 25.25, 0,     "tall",   "[mfr] box: 2 end panels, floor slab on the ladder, 1 divider, shelf. Openings 22 7/16 x 71, floor at 5 5/8. Toe grilles, floor notches, shelf slots per LG, see construction.scad"],
+  ["S_FRIDGE_TOP", "south",   3.0,   47.125, ceiling_h - 77.375 - 1.5, 23.25, 77.375, "wall", "[choice] cabinet over the fridges, 23 1/4 deep: the 2 channel continues behind it to a 1 1/2 vented strip at the ceiling"],
+  ["S_B8",         "south",  50.125,  7.875, 30, 24, toe_h,        "base",   "[choice] custom pullout, what is left between the bay and the DW. DW outlet here"],
   ["S_DW",         "south",  58.0,   24.0,  30, 24, toe_h,         "zone",   "dishwasher opening, see DW"],
   ["S_SB36",       "south",  82.0,   36.0,  30, 24, toe_h,         "base",   "[label] 36 sink base, centred on WIN_S2 at 100, bowls 85 to 115 inside. No top drawer"],
   ["S_B24",        "south", 118.0,   24.0,  30, 24, toe_h,         "base",   "[label] 24 drawer base. Drainboard rides over 118 to 132 1/4"],
@@ -78,9 +78,9 @@ cutout_rear = west_counter_oh + base_d - 2.75 - 19.8125;   // cooktop cutout rea
 appliances = [
   ["DW",  "Bosch SHV53D73UC",      "south",  58.0,    24.0,    34.0625, 24.0,    0,     0,
      "[mfr, install manual p.9] opening 23 5/8 to 24 1/4 W, 34 1/16 H min, 21 5/8 D min. 120 V outlet in an ADJACENT cabinet (S_B8). Drain hose max 92 with a high loop at 33 min above the floor (p.9). Panel: Bofronts dishwasher panel for SEKTION, Bosch accepts 7 to 18 lb from the factory."],
-  ["FR1", "LG LSBNC1021P",         "south",   3.75,   22.375,  71.0,    22.5,    0,     0.75,
-     "[mfr] body 21 4/5 W x 70 H (case) x 22 1/2 D no handle, 20 3/5 D without door. Clearance 3/10 sides, 1 top. Hinge right from factory, reversible. Open 90: 24 4/5 wide, 45 3/10 deep"],
-  ["FR2", "LG LSBNC1021P",         "south",  26.875,  22.375,  71.0,    22.5,    0,     0.75,
+  ["FR1", "LG LSBNC1021P",         "south",   3.75,   22.4375, 71.0,    22.5,    5.625, 2.0,
+     "[mfr] body 554 W x 1775 H x 565 D (mm), door panels 592 wide for a 600 cabinet; freezer panel 696/699/701 mm for 15/18/20 mm sides, fridge panel height from the full install manual [verify]. Hinge right from factory, reversible. Open 90: 24 4/5 wide, 45 3/10 deep. Two units side by side: panel width = opening + divider - gap = 23 1/16, Bofronts custom"],
+  ["FR2", "LG LSBNC1021P",         "south",  26.9375, 22.4375, 71.0,    22.5,    5.625, 2.0,
      "[mfr] same. [choice] handles at the centre: FR1 hinged on the east (factory right, door needs 2 1/4 past its opening toward the east wall, covered by the 3/4 panel + 3 filler), FR2 reversed to hinge on the west, its door swings over S_B8. Door panels: Bofronts custom, LG panel spec, under LG's weight limit"],
   ["SINK",       "Segong SG-12050D2", "south",  85.0,  30.0, 8.5, 19.6875, counter_h - 8.5, base_d + counter_oh - 2 - 19.6875,
      "[mfr] 1200 x 500 mm top mount (rim 85 to 132 1/4), 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],

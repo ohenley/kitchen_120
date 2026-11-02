@@ -20,11 +20,20 @@ finger_w     = 1.0;     // [choice] carcass finger joints, 1 wide, top and botto
 // toe_h comes from kitchen_data.scad (ladder base height, separate part, continuous under a run)
 toe_setback  = 3;       // [choice] ladder front set back 3 from the box front
 
-// ---- fridge bay -----------------------------------------------------------
-// [verify] from the LG installation manual (MFL67792604): enclosure height, base height and
-// load, vent free area per unit, panel thickness and weight. Until then the bay is panels only.
-fridge_vent_in2 = 31;      // [verify] reported as "over 200 cm2" per unit; location (base, rear, top) unknown
-fridge_base_h   = 0;       // [verify] reported 20 mm supported base; 0 until the manual says where it sits
+// ---- fridge bay, from the LG spec sheet p.2 cabinet figure (15 mm cabinet basis) --------
+// Air: in through the toe grille, under the floor slab, up through the floor notch at the rear,
+// up the 50 mm channel behind the unit, out through the slot in the shelf, up the channel behind
+// the top cabinet to the vented strip at the ceiling.
+fr_toe_grille_w = 404 / 25.4;   // [mfr] toe board opening, centred on each unit
+fr_toe_grille_h = 51 / 25.4;    // [mfr]
+fr_notch_w      = 190 / 25.4;   // [mfr] floor slab notch at the rear, width along the bay
+fr_notch_d      = 220 / 25.4;   // [mfr] notch depth, front to back, from the rear edge
+fr_notch_from   = 300 / 25.4;   // [mfr] notch starts 300 from the east side of each opening
+fr_top_slot_w   = 400 / 25.4;   // [mfr] shelf slot, centred on each unit, at the rear
+fr_top_slot_d   = 50 / 25.4;    // [mfr]
+fr_channel      = 2.0;          // [mfr] 50 mm behind the unit, carried up behind the top cabinet
+fr_top_vent     = 1.5;          // [choice] vented strip at the ceiling, continuous grille over the bay
+fr_tab_w        = 3.0;          // [choice] divider tabs into through slots in floor and shelf, 3 per edge
 
 // ---- IKEA / Bofronts front interface ------------------------------------
 // The front hole row is where Blum plates and Bofronts doors expect them.
