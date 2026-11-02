@@ -20,10 +20,8 @@ counter_oh  = 1.5;            // [choice] countertop overhang past the box front
 toe_h       = 4.5;            // [label]
 base_d      = 24;
 wall_d      = 15;
-west_offset = 2.875;          // [label] west base run sits 2 7/8 off the west wall. Deliberate: pulls the run out so its
-                              //   fronts land flush with the end of S_CORNER (26 5/8 - 24 = 2 5/8, within the 1/4 pixel
-                              //   tolerance). The strip behind is under the counter (28 3/8 deep on this wall); gas line and
-                              //   the 240 V box can run there. Set to 0 to butt the run against the wall.
+west_offset = 0;              // [choice] west base run sits against the wall, 24 deep, counter 25 1/2 like the south run.
+                              //   The planner label showed 2 7/8 off the wall (28 3/8 counter); rejected, not wanted.
 
 // ---- openings: [id, wall, pos, width, sill_z, head_z] ------------------
 // No window on the west wall. The 51 1/4 x 16 white box at the ceiling over the oven in the
