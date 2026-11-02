@@ -6,18 +6,17 @@
 // ---- stock ------------------------------------------------------------
 ply_t        = 0.75;    // carcass, "3/4" prefinished maple plywood. [verify] measure the sheet: 18 mm = 0.709, 23/32 = 0.719. Drawer box widths depend on it
 back_t       = 0.75;    // full back, same stock
-drawer_t     = 0.5;     // drawer box sides/front/back, 1/2 Baltic birch
+drawer_t     = 0.625;   // drawer box sides/front/back, 5/8 Baltic birch, the dovetail-box standard
 drawer_bot_t = 0.25;    // drawer bottom, 1/4 Baltic birch
 sheet_w      = 48;
 sheet_l      = 96;
-kerf         = 0.25;    // bit diameter used for nesting estimate
+bit_d        = 0.25;    // [choice] 1/4 compression bit: dogbone size and nesting gap
 
 // ---- carcass joinery ----------------------------------------------------
 dado_depth   = 0.375;   // [choice] all dados and rabbets 3/8 deep
 bot_up       = 0.5;     // [choice] bottom dado starts 1/2 above the side's bottom edge (sits on the ladder)
 back_in      = 0.5;     // [choice] back panel's rear face 1/2 in from the side's rear edge
-dowel_d      = 8 / 25.4;// 8 mm dowels
-dowel_pitch  = 6;       // [choice] one dowel every 6 along a top/side joint
+finger_w     = 1.0;     // [choice] carcass finger joints, 1 wide, top and bottom to sides. Drawer fingers = drawer_t
 // toe_h comes from kitchen_data.scad (ladder base height, separate part, continuous under a run)
 toe_setback  = 3;       // [choice] ladder front set back 3 from the box front
 
@@ -46,7 +45,6 @@ rear_notch_h = 0.5;        // [verify] notch height
 hook_hole_d  = 6 / 25.4;   // [verify] rear hook hole in the back panel, 6 mm
 hook_hole_x  = 0.4375;     // [verify] hook hole centre from the outside face of the side, 7/16
 hook_hole_z  = 0.3125;     // [verify] hook hole centre above the side's bottom edge, 5/16
-lock_tongue  = 0.25;       // [choice] drawer lock joint: tongue 1/4 thick, dado 1/4 from the end
 box_h_minus  = 4;          // [choice] box height = front height - 4, never under 4
 
 // ---- fronts per cabinet: [id, kind, [heights top to bottom] or door count] -

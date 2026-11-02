@@ -7,8 +7,10 @@ Writes, into out_dir:
   cutlist.csv        one row per part: cabinet, part, qty, length, width, thickness, material, features
   fronts.csv         the Bofronts order: one row per door or drawer front, nominal size
   summary.txt        sheet estimate and the [verify] list
-  <CABINET>.dxf      all parts of that cabinet laid flat, outlines on OUTLINE, pockets on DADO, holes on HOLE
-Everything is a flat 2D cut: outlines, dados/rabbets as pockets, holes. No part stands on edge.
+  <CABINET>.dxf      all parts of that cabinet laid flat: OUTLINE (with finger joints), DADO (pockets),
+                     HOLE, DOGBONE (relief circles at notch corners, bit diameter; keep or let the CAM redo them)
+Everything is a flat 2D cut. Carcass top and bottom are finger-jointed to the sides, the back sits in
+dados. Drawer boxes are finger-jointed at all four corners. No part stands on edge.
 """
 import csv, math, os, re, sys
 
@@ -47,12 +49,78 @@ class Part:
     def __init__(self, cab, name, L, W, t, mat, qty=1):
         self.cab, self.name, self.L, self.W, self.t, self.mat, self.qty = cab, name, L, W, t, mat, qty
         self.feats = []
+        self.poly = [(0, 0), (L, 0), (L, W), (0, W)]   # outline, counterclockwise; fingered edges replace it
+        self.dogbones = []                              # (x, y) centres of bit-diameter relief circles
+    def fingers(self, edges, bit_d):
+        """edges: {"bottom"|"right"|"top"|"left": (depth, finger_w, start_tab)}. The nominal L x W is the
+        outer envelope; notches are cut inward by depth. start_tab says whether the first finger at the
+        edge's start (bottom-left going counterclockwise) is a tab (full) or a notch."""
+        self.poly, self.dogbones = fingered_outline(self.L, self.W, edges, bit_d)
     def pocket(self, x, y, w, h, note):
         self.feats.append(("DADO", x, y, w, h, note))
     def hole(self, x, y, d, note=""):
         self.feats.append(("HOLE", x, y, d, 0, note))
     def note(self, s):
         self.feats.append(("NOTE", 0, 0, 0, 0, s))
+
+def finger_profile(length, depth, fw, start_tab):
+    """Points along an edge from 0 to length, y = 0 at the envelope, y = -depth in a notch."""
+    n = max(2, int(round(length / fw)))
+    if n % 2 == 0 and start_tab is not None:
+        n = n  # even count: edge starts and ends with opposite states; fine for mating parts
+    f = length / n
+    pts, corners = [], []
+    tab = start_tab
+    x = 0.0
+    for i in range(n):
+        y0 = 0.0 if tab else -depth
+        pts.append((x, y0)); pts.append((x + f, y0))
+        if not tab:
+            corners.append((x, -depth)); corners.append((x + f, -depth))
+        x += f; tab = not tab
+    return pts, corners
+
+def fingered_outline(L, W, edges, bit_d):
+    """Counterclockwise outline of an L x W envelope with fingered edges. Dogbone relief circles at
+    every inside corner of every notch, centred so the circle passes through the corner."""
+    r = bit_d / 2
+    poly, bones = [], []
+    def edge(name, p0, p1, inward):
+        # p0 -> p1 is the outline direction. The finger pattern is always generated from the end with
+        # the smaller x (or y), so start_tab means "tab at x = 0" / "tab at y = 0" on every edge and the
+        # same pattern on the top and bottom edges of a part lines up.
+        e = edges.get(name)
+        dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+        length = (dx * dx + dy * dy) ** 0.5
+        if not e:
+            poly.append(p0); return
+        depth, fw, start_tab = e
+        reverse = name in ("top", "left")
+        q0, q1 = (p1, p0) if reverse else (p0, p1)
+        ux, uy = (q1[0] - q0[0]) / length, (q1[1] - q0[1]) / length
+        pts, corners = finger_profile(length, depth, fw, start_tab)
+        seq = [(q0[0] + ux * a + inward[0] * (-b), q0[1] + uy * a + inward[1] * (-b)) for (a, b) in pts]
+        poly.extend(reversed(seq) if reverse else seq)
+        p0 = q0
+        # inside corners: pairs (left corner, right corner) of each notch bottom
+        for i in range(0, len(corners), 2):
+            (a1, _), (a2, _) = corners[i], corners[i + 1]
+            cx1 = p0[0] + ux * a1 + inward[0] * depth; cy1 = p0[1] + uy * a1 + inward[1] * depth
+            cx2 = p0[0] + ux * a2 + inward[0] * depth; cy2 = p0[1] + uy * a2 + inward[1] * depth
+            k = r / 2 ** 0.5
+            # push the circle into the notch: along the edge toward the notch interior, and outward (-inward)
+            bones.append((cx1 + ux * k - inward[0] * k, cy1 + uy * k - inward[1] * k))
+            bones.append((cx2 - ux * k - inward[0] * k, cy2 - uy * k - inward[1] * k))
+    edge("bottom", (0, 0), (L, 0), (0, 1))
+    edge("right",  (L, 0), (L, W), (-1, 0))
+    edge("top",    (L, W), (0, W), (0, -1))
+    edge("left",   (0, W), (0, 0), (1, 0))
+    # drop consecutive duplicates
+    out = []
+    for q in poly:
+        if not out or abs(out[-1][0] - q[0]) > 1e-9 or abs(out[-1][1] - q[1]) > 1e-9:
+            out.append(q)
+    return out, bones
 
 def holes_row(part, x, z0, zmax, pitch, d, note):
     z = z0
@@ -69,13 +137,18 @@ def carcass(C, cab, W, H, D, kind, variant, parts):
         # sides run to the floor, no ladder under this box; floor of the opening at ov_floor
         side_h = H + C["toe_h"]
         bot_z = C["ov_floor"] - t
-    # sides
+    # sides: top and bottom edges fingered (tabs first at the front), back in a dado
+    fw, bit = C["finger_w"], C["bit_d"]
     s = Part(cab, "side", D, side_h, t, "ply", 2)
-    s.pocket(0, bot_z, D - C["back_in"], t, "bottom dado, %.3f deep" % dd)
-    s.pocket(D - C["back_in"] - bt, bot_z, bt, side_h - bot_z - (0 if variant == "sink" else t), "back dado, %.3f deep" % dd)
+    edges = {"bottom": (t, fw, True)} if variant != "oven" else {}
     if variant != "sink":
-        s.pocket(0, side_h - t, D - C["back_in"], t, "top rabbet, %.3f deep" % dd)
-    else:
+        edges["top"] = (t, fw, True)
+    s.fingers(edges, bit)
+    if variant == "oven":
+        # sides run to the floor; the opening floor is a captured panel in a dado, not a corner joint
+        s.pocket(0, bot_z, D - C["back_in"], t, "floor dado, %.3f deep" % dd)
+    s.pocket(D - C["back_in"] - bt, (0 if variant == "oven" else t), bt, side_h - (0 if variant == "oven" else 2 * t) - (0 if variant != "sink" else -t), "back dado, %.3f deep" % dd)
+    if variant == "sink":
         s.pocket(0, side_h - 4, t, 4, "front stretcher dado"); s.pocket(D - C["back_in"] - bt - t, side_h - 4, t, 4, "rear stretcher dado")
     holes_row(s, C["row_front"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], "front 32 mm row")
     holes_row(s, D - C["back_in"] - bt - C["row_rear"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], "rear 32 mm row")
@@ -83,45 +156,48 @@ def carcass(C, cab, W, H, D, kind, variant, parts):
         s.pocket(0, side_h - 3.25, 3.25, 3.25, "cooktop notch 3/16 deep from the INSIDE face, top front")
         s.note("sides run to the floor: toe board in front, floor of the opening at %.3f" % C["ov_floor"])
     if variant == "corner":
-        s.note("blind corner: a 23 5/8 fixed panel closes the half toward the window wall")
+        s.note("blind corner: a 23 fixed panel closes the half toward the window wall")
     parts.append(s)
-    # bottom: between the side dados, front flush, stops at the back
+    # top and bottom: full width W (fingers through the sides), full depth D, back dado near the rear
+    def slab(name):
+        q = Part(cab, name, D, W, t, "ply")
+        q.fingers({"bottom": (t, fw, False), "top": (t, fw, False)}, bit)   # ends at y = 0 and y = W
+        q.pocket(D - C["back_in"] - bt, t, bt, W - 2 * t, "back dado, %.3f deep" % dd)
+        return q
+    if variant == "oven":
+        parts.append(Part(cab, "floor", D - C["back_in"] - bt + dd, W - 2 * t + 2 * dd, t, "ply"))
+    else:
+        parts.append(slab("bottom"))
     inner = W - 2 * t
-    parts.append(Part(cab, "bottom", D - C["back_in"] - bt, inner + 2 * dd, t, "ply"))
-    # back: into the side dados, sits on the bottom, under the top
-    back_h = side_h - bot_z - t - (0 if variant == "sink" else t)
-    parts.append(Part(cab, "back", inner + 2 * dd, back_h, bt, "ply"))
     if variant == "sink":
         parts.append(Part(cab, "stretcher", inner + 2 * dd, 4, t, "ply", 2))
+        back_h = side_h - t - dd        # from the bottom slab's dado to the top edge
     else:
-        top = Part(cab, "top", D - C["back_in"], inner + 2 * dd, t, "ply")
-        n = max(2, int(D // C["dowel_pitch"]))
-        for i in range(n):
-            x = 2 + i * (D - C["back_in"] - 4) / (n - 1)
-            top.hole(x, dd / 2, C["dowel_d"], "dowel into side, both ends")
-            top.hole(x, inner + 2 * dd - dd / 2, C["dowel_d"], "dowel into side")
-        parts.append(top)
+        parts.append(slab("top"))
+        back_h = side_h - 2 * t + 2 * dd
+    parts.append(Part(cab, "back", inner + 2 * dd, back_h, bt, "ply"))
     if variant == "corner":
         parts.append(Part(cab, "blind_panel", 23.625, H, t, "ply"))
 
 def drawer_boxes(C, cab, W, heights, parts):
-    t, bt = C["drawer_t"], C["drawer_bot_t"]
+    t, bt, bit = C["drawer_t"], C["drawer_bot_t"], C["bit_d"]
     inner = W - 2 * C["ply_t"]
     bw = inner - C["box_w_minus"]
     for i, fh in enumerate(heights):
         bh = max(4, fh - C["box_h_minus"])
         tag = "drawer%d" % (i + 1)
+        # sides: fingers on both vertical ends (front and back), tabs first at the bottom
         side = Part(cab, tag + "_side", C["box_depth"], bh, t, "bb", 2)
-        side.pocket(C["lock_tongue"], 0, C["lock_tongue"], bh, "lock dado for front, 1/4 deep")
-        side.pocket(C["box_depth"] - 2 * C["lock_tongue"], 0, C["lock_tongue"], bh, "lock dado for back, 1/4 deep")
+        side.fingers({"left": (t, t, True), "right": (t, t, True)}, bit)
         side.pocket(0, C["box_bot_up"], C["box_depth"], bt, "bottom dado 1/4 deep")
         side.pocket(C["box_depth"] - C["rear_notch_w"], 0, C["rear_notch_w"], C["rear_notch_h"], "Tandem rear notch [verify]")
         parts.append(side)
-        fb = Part(cab, tag + "_front_back", bw - 2 * t + 2 * C["lock_tongue"], bh, t, "bb", 2)
-        fb.pocket(0, C["box_bot_up"], bw - 2 * t + 2 * C["lock_tongue"], bt, "bottom dado 1/4 deep")
-        fb.pocket(0, 0, C["lock_tongue"], bh, "tongue: remove 1/4 of thickness on both ends, outside face")
+        # front and back: full outer width, notches first at the bottom so they mate with the sides
+        fb = Part(cab, tag + "_front_back", bw, bh, t, "bb", 2)
+        fb.fingers({"left": (t, t, False), "right": (t, t, False)}, bit)
+        fb.pocket(0, C["box_bot_up"], bw, bt, "bottom dado 1/4 deep")
         fb.hole(C["hook_hole_x"], C["hook_hole_z"], C["hook_hole_d"], "Tandem hook hole, back panel only [verify]")
-        fb.hole(bw - 2 * t + 2 * C["lock_tongue"] - C["hook_hole_x"], C["hook_hole_z"], C["hook_hole_d"], "Tandem hook hole [verify]")
+        fb.hole(bw - C["hook_hole_x"], C["hook_hole_z"], C["hook_hole_d"], "Tandem hook hole [verify]")
         parts.append(fb)
         parts.append(Part(cab, tag + "_bottom", C["box_depth"] - 2 * t + 2 * 0.25, bw - 2 * t + 2 * 0.25, bt, "bb"))
 
@@ -215,12 +291,17 @@ def main():
 
     # DXF per cabinet
     by_cab = {}
+    C_bit = C["bit_d"]
     for p in parts: by_cab.setdefault(p.cab, []).append(p)
     for cab, ps in by_cab.items():
         d = DXF(); x = 0
         for p in ps:
             for q in range(p.qty):
-                d.rect(x, 0, p.L, p.W, "OUTLINE")
+                pts = p.poly
+                for (ax_, ay_), (bx_, by_) in zip(pts, pts[1:] + pts[:1]):
+                    d.line(x + ax_, ay_, x + bx_, by_, "OUTLINE")
+                for (cx_, cy_) in p.dogbones:
+                    d.circle(x + cx_, cy_, C_bit, "DOGBONE")
                 d.text(x + 0.5, p.W + 0.6, "%s %s %.3fx%.3fx%.3f" % (cab, p.name, p.L, p.W, p.t))
                 for k, fx, fy, fw, fh, note in p.feats:
                     if k == "DADO": d.rect(x + fx, fy, fw, fh, "DADO")
@@ -237,7 +318,7 @@ def main():
     with open(os.path.join(out, "summary.txt"), "w") as f:
         f.write("parts: %d lines, %d pieces\n" % (len(parts), sum(p.qty for p in parts)))
         f.write("3/4 ply: %.1f sq ft, about %d sheets at 80%% yield\n" % (area / 144, math.ceil(area / sheet / 0.8)))
-        f.write("1/2 Baltic birch: %.1f sq ft, about %d sheets\n" % (area_bb / 144, math.ceil(area_bb / sheet / 0.8)))
+        f.write("5/8 Baltic birch: %.1f sq ft, about %d sheets\n" % (area_bb / 144, math.ceil(area_bb / sheet / 0.8)))
         f.write("1/4 Baltic birch: %.1f sq ft, about %d sheets\n" % (area_bot / 144, math.ceil(area_bot / sheet / 0.8)))
         f.write("\nfridge bay: panels only. Base, vent openings and panel fixing wait for the LG installation manual.\n")
         f.write("set ply_t in construction.scad to the measured sheet thickness (18 mm or 23/32 is usual); drawer box widths depend on it.\n")

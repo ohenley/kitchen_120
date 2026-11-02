@@ -23,9 +23,11 @@ pixels, [mfr] manufacturer document, [choice] a decision to confirm.
 
   python3 cutlist.py kitchen_data.scad construction.scad out
 
-Construction: 3/4 prefinished ply carcass, bottom and back in 3/8 dados, top
-rabbeted and dowelled, separate 4 1/2 ladder base per run. Sink base has two
-stretchers instead of a top. Oven cabinet sides run to the floor with the
-opening floor at the height the oven manual asks. Drawer boxes 1/2 Baltic birch
-with a lock joint, 1/4 bottom, on Blum Tandem 21 runners. Fronts from Bofronts,
-drawer fronts undrilled.
+Construction: 3/4 prefinished ply carcass. Top and bottom finger-jointed to the
+sides (1 in fingers, glue only), back in 3/8 dados in sides, top and bottom.
+Separate 4 7/8 ladder base per run. Sink base has two stretchers instead of a
+top. Oven cabinet sides run to the floor with the opening floor in a dado at
+the height the oven manual asks. Drawer boxes 5/8 Baltic birch, finger-jointed
+at all four corners, 1/4 bottom in a dado, on Blum Tandem 21 runners. Fronts
+from Bofronts, drawer fronts undrilled. Every cut is flat: outline, pocket,
+hole. Dogbone relief circles are on their own DXF layer.
