@@ -9,6 +9,7 @@ show_cabinets   = true;
 show_appliances = true;
 show_openings   = true;
 show_labels     = true;
+shade_modules   = true;   // each cabinet row gets its own brightness step so neighbours read apart
 wall_t = 4;   // drawn wall thickness, cosmetic
 
 // ---- helpers ----------------------------------------------------------
@@ -39,6 +40,10 @@ function kind_color(k) =
   k == "filler" ? [0.50, 0.50, 0.50] :
                   [0.90, 0.90, 0.90, 0.35];   // zone: translucent
 
+// brightness step per row index, cycling so adjacent rows always differ; alpha untouched
+function shade(i) = shade_modules ? [1.00, 0.72, 0.88, 0.58][i % 4] : 1;
+function tint(c, f) = len(c) == 4 ? [c[0] * f, c[1] * f, c[2] * f, c[3]] : c * f;
+
 // ---- walls and openings ---------------------------------------------
 module walls() {
   color([0.92, 0.92, 0.92])
@@ -62,10 +67,11 @@ module walls() {
 
 // ---- cabinets ---------------------------------------------------------
 module cabinets_all() {
-  for (c = cabinets) {
+  for (i = [0 : len(cabinets) - 1]) {
+    c = cabinets[i];
     id = c[0]; wall = c[1]; pos = c[2]; w = c[3]; h = c[4]; d = c[5]; z = c[6]; kind = c[7];
     off = (wall == "west" && kind != "wall") ? west_offset : 0;
-    color(kind_color(kind))
+    color(tint(kind_color(kind), shade(i)))
     on_wall(wall, pos, w, d, z, off) {
       box(w, d, h);
       label(id, w);

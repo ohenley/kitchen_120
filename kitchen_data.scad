@@ -36,13 +36,13 @@ openings = [
 ];
 
 // ---- electrical: [id, wall, pos_centre, z, note] -------------------------
-// Countertop receptacles already in the oven wall. The cooktop centre 73 1/4
-// comes from them: 12 1/4 beyond each edge of the 30 cooktop.
+// Countertop receptacles already in the oven wall. With the standard 12 beside the corner
+// the oven cabinet centre is 74; the receptacles land 13 and 11 1/2 from the cooktop edges.
 // Oven 240 V 30 A and cooktop 120 V are in the adjacent cabinets, not listed.
 // z = 0 until the box height above the counter is measured. Nothing renders it yet.
 electrical = [
-  ["OUT_W1", "west",  46.0, 0, "[label] countertop receptacle, 12 1/4 south of the cooktop edge (58 1/4), toward the window wall"],
-  ["OUT_W2", "west", 100.5, 0, "[label] countertop receptacle, 12 1/4 north of the cooktop edge (88 1/4), toward the corridor"],
+  ["OUT_W1", "west",  46.0, 0, "[label] countertop receptacle, 13 south of the cooktop edge (59), toward the window wall"],
+  ["OUT_W2", "west", 100.5, 0, "[label] countertop receptacle, 11 1/2 north of the cooktop edge (89), toward the corridor"],
 ];
 
 // ---- cabinets: [id, wall, pos, width, height, depth, z_bottom, kind, note] -
@@ -61,11 +61,11 @@ cabinets = [
   ["S_GAP",        "south", 142.0,    4.5,  30, 24, toe_h,         "zone",   "[label] pull-away gap of the blind corner, under the counter. Planner: 2 3/4 + frame"],
   // oven wall (west), from the window wall
   ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[label] SECBBP1D blind corner base, system width 50. Blind panel 0 to 23 5/8 toward the window wall, door 24 to 47. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
-  ["W_B11",        "west",   47.0,   11.25, 30, 24, toe_h,         "base",   "[choice] custom 11 1/4, lands the oven centre at 73 1/4. Planner shows 10 1/4 + 1 3/4 here"],
-  ["W_OVEN30",     "west",   58.25,  30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 73 1/4 between the two countertop receptacles. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, see OV"],
-  ["W_D30",        "west",   88.25,  30.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers, finished end toward the corridor"],
-  ["W_FILL2",      "west",  118.25,   1.75, 30, 24, toe_h,         "filler", "[choice] reveal to the opening at 120"],
-  ["W_HOOD30",     "west",   58.25,  30.0,  18, 20, 66,            "zone",   "[choice] 30 hood centred on the oven cabinet at 73 1/4. Height/depth placeholders"],
+  ["W_B12",        "west",   47.0,   12.0,  30, 24, toe_h,         "base",   "[label] standard 12. Oven centre lands at 74, receptacles 13 and 11 1/2 from the cooktop edges"],
+  ["W_OVEN30",     "west",   59.0,   30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 74. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, see OV"],
+  ["W_D30",        "west",   89.0,   30.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers, finished end toward the corridor"],
+  ["W_FILL2",      "west",  119.0,    1.0,  30, 24, toe_h,         "filler", "[choice] reveal to the opening at 120"],
+  ["W_HOOD30",     "west",   59.0,   30.0,  18, 20, 66,            "zone",   "[choice] 30 hood centred on the oven cabinet at 74. Height/depth placeholders"],
 ];
 
 // ---- appliances: [id, model, wall, pos, w, h, d, z_bottom, off, note] ---
@@ -85,8 +85,8 @@ appliances = [
      "[choice] drainboard depression below the rim: 1 1/2 is a GUESS, measure. If it is deeper than the slab (1 1/8) the top drawer of S_B24 loses that much"],
   ["FAUCET", "Kingston Brass KS413", "south", 94.625, 10.75, 9.25, 10.3125, 37.625, -0.5,
      "[mfr] wall mount, 8 centres, union axis 39 1/2 above the SUBFLOOR (as roughed in), about 39 above the finished floor. Centred on WIN_S2 at 100. Body 10 3/4 wide incl. 2 3/4 escutcheons, 7 7/8 above axis to spout top, tip 10 5/16 from the tile face. off -0.5: the tile face above the counter sits about 1/2 in front of the cabinet-level wall. Stubs to be cut after tile (3/8 drywall + thinset + 1/4 to 1/2 tile)."],
-  ["CT",  "KitchenAid KCGG530PBL", "west",   58.8125, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
+  ["CT",  "KitchenAid KCGG530PBL", "west",   59.5625, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
      "[mfr] countertop cutout 28 7/8 W x 19 13/16 D, front edge 2 3/4 behind the counter front. Burner box 28 1/4 x 19 1/4 x 3 1/4 (4 1/4 at the gas inlet, right rear). Counter >= 25 3/8 deep. 120 V outlet within 24 of the right rear corner. 34 to an uncovered cabinet above, 18 to upper cabinets within 12 3/4 either side."],
-  ["OV",  "KitchenAid KOES730SBE", "west",   59.0,    28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,
+  ["OV",  "KitchenAid KOES730SBE", "west",   59.75,  28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,
      "[mfr] under-cooktop install: cutout 28 1/2 W min x 27 3/4 H min x 24 D, bottom of cutout 31 3/8 below the countertop surface and at most 4 5/8 above the floor. 240 V 40 A junction box in an ADJACENT cabinet. Centre the cooktop cutout over the oven cutout."],
 ];
