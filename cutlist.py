@@ -322,11 +322,17 @@ def fridge_bay(C, cab, W, H, D, parts, openings):
     parts += [div, floor, shelf, toe, Part(cab, "ceiling_vent_strip", W, C["fr_top_vent"], t, "ply")]
 
 # ---------------------------------------------------------------- ladders
-def ladders(C, cabs, parts):
+def ladders(C, cabs, parts, K):
+    """One ladder per unbroken run of boxes on a wall: a front rail and a rear rail, cross pieces seated
+    in 3/8 dados in both rails. Cross positions: both ends, under every box joint, under the fridge divider,
+    and at most 24 apart elsewhere; none under a fridge opening (air path from the toe grille to the floor notch)."""
+    t, dd = C["ply_t"], C["dado_depth"]
     runs = {}
     for c in cabs:
         if c["ladder"]:
             runs.setdefault(c["wall"], []).append(c)
+    bay = next((c for c in K["cabinets"] if c[7] == "tall"), None)
+    frs = sorted([(a[3], a[4]) for a in K["appliances"] if a[0].startswith("FR")])
     n = 0
     for wall, cs in runs.items():
         cs.sort(key=lambda c: c["pos"])
@@ -341,8 +347,30 @@ def ladders(C, cabs, parts):
             n += 1
             L = b - a
             tag = "LADDER%d_%s_%g_to_%g" % (n, wall, a, b)
-            parts.append(Part(tag, "rail", L, C["toe_h"], C["ply_t"], "ply", 2))
-            parts.append(Part(tag, "cross", C["base_d"] - C["toe_setback"] - 2 * C["ply_t"], C["toe_h"], C["ply_t"], "ply", int(L // 24) + 2))
+            # cross centres along the run, from the run start
+            joints = sorted({c["pos"] for c in cs if a < c["pos"] < b} | {c["pos"] + c["W"] for c in cs if a < c["pos"] + c["W"] < b})
+            xs = [a + t / 2] + [j for j in joints] + [b - t / 2]
+            if bay and wall == bay[1] and a <= bay[2] < b:
+                xs.append(frs[0][0] + frs[0][1] + t / 2)   # under the divider
+            xs = sorted(set(xs))
+            filled = []
+            for x0, x1 in zip(xs, xs[1:]):
+                filled.append(x0)
+                in_bay = bay and wall == bay[1] and bay[2] - 0.01 <= x0 and x1 <= bay[2] + bay[3] + 0.01
+                if not in_bay:
+                    k = int(math.ceil((x1 - x0) / 24)) - 1
+                    for i in range(1, k + 1):
+                        filled.append(x0 + (x1 - x0) * i / (k + 1))
+            filled.append(xs[-1])
+            for nm in ("front_rail", "rear_rail"):
+                r = Part(tag, nm, L, C["toe_h"], t, "ply")
+                for x in filled:
+                    r.pocket(x - a - t / 2, 0, t, C["toe_h"], dd, "cross dado 3/8 deep")
+                r.note("front rail 3 behind the box fronts; rear rail at the wall, scribe to it")
+                parts.append(r)
+            cl = C["base_d"] - C["toe_setback"] - 2 * t + 2 * dd
+            parts.append(Part(tag, "cross", cl, C["toe_h"], t, "ply", len(filled)))
+            parts[-1].note("seats 3/8 into each rail, glue + 2 screws per end; positions along the run: " + ", ".join("%.2f" % (x - a) for x in filled))
 
 # ---------------------------------------------------------------- main
 def main():
@@ -410,7 +438,7 @@ def main():
         if cid in fronts and fronts[cid][1] == "drawers":
             drawer_boxes(C, cid, W, fronts[cid][2], parts, hw)
         cabs.append(rec)
-    ladders(C, cabs, parts)
+    ladders(C, cabs, parts, K)
 
     # ---- cutlist.csv
     with open(os.path.join(out, "cutlist.csv"), "w", newline="") as f:
@@ -445,7 +473,7 @@ def main():
             w.writerow([u, "freezer door panel", 1, "%.4f" % C["fr_panel_w"], "%.4f" % C["fr_panel_freezer_h"], "Bofronts custom, LG jig, under 10 kg [LG table: 701 mm at 20 mm sides]"])
         bay = next((c for c in K["cabinets"] if c[7] == "tall"), None)
         for p in parts:
-            if p.name == "rail":
+            if p.name == "front_rail":
                 m = re.match(r"LADDER\d+_(\w+)_([\d.]+)_to_([\d.]+)", p.cab)
                 a, b = float(m.group(2)), float(m.group(3))
                 L = p.L
