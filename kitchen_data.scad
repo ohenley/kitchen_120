@@ -15,7 +15,7 @@ ceiling_h   = 94;             // [label] measured, planner had 96
 south_len   = 170.5;          // [label] 82 + 36 + 52 1/2
 west_len    = 288;            // [label] 120 + 36 + 132
 counter_h   = 36;             // [choice] planner shows 4 1/2 + 30 + 1 1/8 = 35 5/8. Both satisfy the appliances, see notes.
-counter_t   = 1.125;          // [label]
+counter_t   = 1.125;          // [verify] stainless top: substrate + sheet from the fabricator, usually 13/16 to 1 1/16; apron 1 1/4 to 1 1/2 folded in front of the fronts. Ladder absorbs the difference to keep counter_h
 counter_oh  = 1.5;            // [choice] countertop overhang past the box front, window wall (counter 25 1/2)
 west_counter_oh = 1.5;        // [choice] oven wall counter 25 1/2, same as the window wall. Cooktop minimum is 25 3/8. Its 2 7/8 rear rule is to a COMBUSTIBLE surface; tile over drywall is not one.
 toe_h       = 4.875;          // [choice] ladder base height. 4 7/8 + 30 box + 1 1/8 slab = 36 counter. The planner had 4 1/2 legs, which gives 35 5/8.
@@ -83,7 +83,7 @@ appliances = [
   ["FR2", "LG LSBNC1021P",         "south",  26.9375, 22.4375, 71.0,    22.5,    5.625, 2.0,
      "[mfr] same. [choice] handles at the centre: FR1 hinged on the east (factory right, door needs 2 1/4 past its opening toward the east wall, covered by the 3/4 panel + 3 filler), FR2 reversed to hinge on the west, its door swings over S_B8. Door panels: Bofronts custom, LG panel spec, under LG's weight limit"],
   ["SINK",       "Segong SG-12050D2", "south",  85.0,  30.0, 8.5, 19.6875, counter_h - 8.5, base_d + counter_oh - 2 - 19.6875,
-     "[mfr] 1200 x 500 mm top mount (rim 85 to 132 1/4), 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],
+     "[mfr] 1200 x 500 mm, to be welded into the stainless top (rim 85 to 132 1/4) if the fabricator accepts 0.8 mm; else the fabricator's bowls on the same layout, 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],
   ["SINK_DRAIN", "drainboard of SINK", "south", 115.0, 17.25, 1.5, 19.6875, counter_h - 1.5, base_d + counter_oh - 2 - 19.6875,
      "[choice] drainboard depression below the rim: 1 1/2 is a GUESS, measure. If it is deeper than the slab (1 1/8) the top drawer of S_B24 loses that much"],
   ["FAUCET", "Kingston Brass KS413", "south", 94.625, 10.75, 9.25, 10.3125, 37.625, -0.5,

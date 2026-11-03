@@ -498,7 +498,8 @@ def main():
         w = csv.writer(f); w.writerow(["wall", "cutout", "from_wall_corner_along_wall", "width_along_wall", "from_counter_front_edge", "depth", "note"])
         w.writerow([ct[2], "cooktop", "%.4f" % ct[3], "%.4f" % ct[4], "2.7500", "%.4f" % ct[6], "KitchenAid KCGG530PBL, 28 7/8 x 19 13/16, front edge 2 3/4 behind the counter front"])
         sk = [a for a in K["appliances"] if a[0] == "SINK"][0]
-        w.writerow([sk[2], "sink", "%.4f" % (sk[3]), "47.2500", "2.0000", "19.6875", "top mount Segong 1200 x 500; cut to the sink's template, not to these numbers [verify]"])
+        w.writerow([sk[2], "sink", "%.4f" % (sk[3]), "47.2500", "2.0000", "19.6875", "integral welded sink, bowls centred at 100 along the wall, centred front to back; fabricator's drawing governs"])
+        w.writerow(["south", "upstand", "", "", "", "", "none, under 1 1/2, or the full 6 to the sill: the faucet escutcheons occupy 37 5/8 to 40 3/8"])
 
     # ---- DXF per cabinet
     by_cab = {}
