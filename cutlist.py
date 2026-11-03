@@ -225,10 +225,9 @@ def carcass(C, cab, W, H, D, variant, parts, extra=None):
         parts.append(slab("bottom"))
         if variant == "sink":
             for nm in ("front_stretcher", "rear_stretcher"):
-                st = Part(cab, nm, inner + 2 * dd, 4, t, "ply")
-                for (y0, y1, dep) in extra.get("stretcher_relief", []) if nm == "front_stretcher" else []:
-                    st.pocket(y0, 1.5, y1 - y0, 4 - 1.5, dep, "drainboard relief %.3f deep, top face up" % dep)
-                parts.append(st)
+                # vertical boards at the front (0 to 3/4) and in front of the back; the drainboard
+                # depression runs from 1 1/2 to 19 1/4 behind the front, so neither meets it
+                parts.append(Part(cab, nm, inner + 2 * dd, 4, t, "ply"))
         else:
             top = slab("top")
             for (x0, x1, y0, y1) in extra.get("top_relief", []):
@@ -375,8 +374,8 @@ def main():
                     x0 = 2 + 1 - K["counter_oh"]       # depression front from the box front: rim 2 behind the counter front, depression 1 inside the rim
                     x1 = x0 + sink_drain[6] - 2
                     y0, y1 = lo - pos, hi - pos
-                    extra["top_relief"] = [(x0, x1, max(y0, C["ply_t"] + 0.25), min(y1, W - C["ply_t"] - 0.25))]
-                    extra["stretcher_relief"] = [(max(y0, 0.375), min(y1, W - 0.375), drop)]
+                    # through the top slab, including its finger zone where the side below is notched
+                    extra["top_relief"] = [(x0, x1, y0 if lo - pos < 0.01 else y0 + 0.25, y1 if pos + W - hi < 0.01 else y1 - 0.25)]
                     rel = []
                     if lo - pos < 0.01: rel.append(("A", x0, x1, drop))
                     if pos + W - hi < 0.01: rel.append(("B", x0, x1, drop))
@@ -547,7 +546,7 @@ Setup rules:
         if sink_drain:
             drop = sink_drain[5] - K["counter_t"]
             f.write("drainboard: drop %.3f below the counter, slab %.3f: %s\n" % (sink_drain[5], K["counter_t"],
-                    "relief generated in S_B24 top, both sink-side sides and the sink base front stretcher [verify the drop]" if drop > 0 else "no relief needed"))
+                    "relief generated in the S_B24 top slab and in the two side panels under it (sink base west, S_B24 east) [verify the drop and the depression footprint]" if drop > 0 else "no relief needed"))
         f.write("\n[verify] in construction.scad, measure before cutting:\n")
         for v in verify: f.write("  " + v + "\n")
     print(open(os.path.join(out, "summary.txt")).read())
