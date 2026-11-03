@@ -25,7 +25,11 @@ Conventions
   DOGBONE_<depth mils|THRU> (bit-diameter relief circles at inside corners that a square part must enter),
   NOTE (text).
   Validation runs before any DXF is written: closed simple outlines, no backtracking, every hole in
-  material, blind bores not breaking into the opposite face's pockets, every part within the sheet.
+  material and clear of every other hole, blind bores not breaking into the opposite face's pockets nor
+  through the bottom of a pocket on their own face, through holes clear of the dados that receive a panel,
+  every part within the sheet; paired service holes (X and X_IN) at the same place on both panels; the
+  fridge column stacking to the ceiling. The 32 mm rows leave out positions that fall in an opening, a
+  dado or another hole (listed in the part's notes).
 """
 import csv, math, os, re, sys, glob
 
@@ -111,22 +115,35 @@ def fingered_outline(L, W, edges, bit_d):
     return dedupe(poly), bones
 
 def dedupe(poly):
+    """Drop repeated points and points that lie on the straight line between their neighbours."""
     out = []
     for q in poly:
         if not out or abs(out[-1][0] - q[0]) > 1e-9 or abs(out[-1][1] - q[1]) > 1e-9:
             out.append(q)
     if len(out) > 1 and abs(out[0][0] - out[-1][0]) < 1e-9 and abs(out[0][1] - out[-1][1]) < 1e-9:
         out.pop()
-    return out
+    keep = []
+    n = len(out)
+    for i in range(n):
+        a, b, c = out[i - 1], out[i], out[(i + 1) % n]
+        v1 = (b[0] - a[0], b[1] - a[1]); v2 = (c[0] - b[0], c[1] - b[1])
+        if n > 3 and abs(v1[0] * v2[1] - v1[1] * v2[0]) < 1e-9 and v1[0] * v2[0] + v1[1] * v2[1] > 0:
+            continue
+        keep.append(b)
+    return keep
 
 def clip_band(poly, axis, lo, hi, limit, keep_below):
-    """Subtract from a rectilinear outline the half-strip {lo < a < hi, b > limit} (keep_below=True) or
-    {lo < a < hi, b < limit} (keep_below=False); a is the coordinate on `axis` (0 = x, 1 = y), b the other.
-    Used to merge notches and reliefs that touch an edge into the outline itself."""
+    """Subtract from a rectilinear outline the half-strip {lo <= a <= hi, b > limit} (keep_below=True) or
+    {lo <= a <= hi, b < limit} (keep_below=False); a is the coordinate on `axis` (0 = x, 1 = y), b the other.
+    Used to merge notches and reliefs that touch an edge into the outline itself. Where an edge crosses
+    the strip's boundary a square step is inserted (the point is kept both as it was and clamped), so a
+    corner notch stays a rectangle and the rest of the edge is untouched."""
     o = 1 - axis
+    eps = 1e-9
     def A(p): return p[axis]
     def B(p): return p[o]
     def mk(a, b): return (a, b) if axis == 0 else (b, a)
+    def clamp(p): return mk(A(p), min(B(p), limit) if keep_below else max(B(p), limit))
     pts = []
     n = len(poly)
     for i in range(n):
@@ -138,13 +155,20 @@ def clip_band(poly, axis, lo, hi, limit, keep_below):
             tt = (a - A(p)) / (A(q) - A(p))
             pts.append(mk(a, B(p) + tt * (B(q) - B(p))))
     out = []
-    for p in pts:
-        if lo - 1e-9 < A(p) < hi + 1e-9:
-            b = B(p)
-            b = min(b, limit) if keep_below else max(b, limit)
-            out.append(mk(A(p), b))
-        else:
+    m = len(pts)
+    for i, p in enumerate(pts):
+        a = A(p)
+        if a < lo - eps or a > hi + eps:
             out.append(p)
+            continue
+        prev, nxt = pts[i - 1], pts[(i + 1) % m]
+        at_lo, at_hi = abs(a - lo) < eps, abs(a - hi) < eps
+        # a point on the strip's boundary whose neighbour lies beyond that boundary is where the step goes
+        step_before = (at_lo and A(prev) < lo - eps) or (at_hi and A(prev) > hi + eps)
+        step_after = (at_lo and A(nxt) < lo - eps) or (at_hi and A(nxt) > hi + eps)
+        if step_before: out.append(p)
+        out.append(clamp(p))
+        if step_after: out.append(p)
     return dedupe(out)
 
 def polygon_area(poly):
@@ -189,6 +213,21 @@ class Part:
                      (c, W), (c, W - c), (0, W - c), (0, c), (c, c)]
     def notch(self, axis, lo, hi, limit, keep_below):
         self.poly = clip_band(self.poly, axis, lo, hi, limit, keep_below)
+        self.prune_dogbones()
+    def prune_dogbones(self):
+        """Keep only the relief circles that still sit at a concave corner of the outline: a notch or a
+        relief cut through a fingered edge removes the corners those circles were made for."""
+        poly, n = self.poly, len(self.poly)
+        concave = []
+        for i in range(n):
+            a, b, c = poly[i - 1], poly[i], poly[(i + 1) % n]
+            if (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) < -1e-9:
+                concave.append(b)
+        keep = []
+        for (x, y, layer) in self.dogbones:
+            if point_in_poly((x, y), poly) and any(math.hypot(x - cx, y - cy) < 0.2 for (cx, cy) in concave):
+                keep.append((x, y, layer))
+        self.dogbones = keep
     def feature_text(self):
         return "; ".join(sorted({f[6] for f in self.feats} | {h[5] for h in self.holes} | set(self.notes)))
     def add_dogbones(self, bit_d):
@@ -200,11 +239,34 @@ class Part:
             for (cx, cy, sx, sy) in ((x, y, 1, 1), (x + w, y, -1, 1), (x + w, y + h, -1, -1), (x, y + h, 1, -1)):
                 self.dogbones.append((cx + sx * k, cy + sy * k, layer))
 
+def hole_in_void(part, x, y, r, web=0.1875):
+    """True when a hole of radius r at (x, y) would not sit in plain material: outside the outline (a notch,
+    a relief, a finger), in or within `web` of a through pocket, a dado or another hole."""
+    pts = [(x, y)] + [(x + r * math.cos(k * math.pi / 4), y + r * math.sin(k * math.pi / 4)) for k in range(8)]
+    if any(not point_in_poly(q, part.poly) for q in pts):
+        return True
+    for f in part.feats:
+        if f[1] - r - web < x < f[1] + f[3] + r + web and f[2] - r - web < y < f[2] + f[4] + r + web:
+            return True
+    for (hx, hy, hd, _, _, _) in part.holes:
+        if math.hypot(hx - x, hy - y) < r + hd / 2 + web:
+            return True
+    return False
+
 def holes_row(part, x, z0, zmax, pitch, d, depth, note):
-    z = z0
-    while z <= zmax:
-        part.hole(x, z, d, depth, note)
+    """A 32 mm system row. Positions that fall in an opening, a dado or another hole are left out (a hole
+    there would be in air or under a panel) and listed in the part's notes. Call after the part's outline,
+    pockets and service holes are in place."""
+    z, skipped = z0, []
+    while z <= zmax + 1e-9:
+        if hole_in_void(part, x, z, d / 2):
+            skipped.append(z)
+        else:
+            part.hole(x, z, d, depth, note)
         z += pitch
+    if skipped:
+        part.note("%s: no hole at z %s (position falls in or within 3/16 of an opening, a dado or another hole)"
+                  % (note.split(",")[0], ", ".join("%.3f" % s for s in skipped)))
 
 # ---------------------------------------------------------------- validation
 def validate(parts, C):
@@ -224,19 +286,35 @@ def validate(parts, C):
                 if segs_cross(poly[i], poly[(i + 1) % n], poly[j], poly[(j + 1) % n]):
                     errs.append((p, "outline self-intersects")); break
         thru = [f for f in p.feats if f[0] == "THRU"]
-        for (x, y, d, depth, face, note) in p.holes:
+        for f in p.feats:
+            kind, fx, fy, fw_, fh, dep, note, mates = f
+            # a groove may run out through a finger notch; nothing may reach past the part's envelope
+            if fx < -1e-6 or fy < -1e-6 or fx + fw_ > p.L + 1e-6 or fy + fh > p.W + 1e-6:
+                errs.append((p, "%s '%s' (%.3f x %.3f at %.3f, %.3f) reaches past the %.3f x %.3f part" % (kind.lower(), note[:30], fw_, fh, fx, fy, p.L, p.W)))
+            if kind == "POCKET" and dep >= p.t - 1e-9:
+                errs.append((p, "pocket '%s' as deep as the part" % note[:30]))
+        for hi, (x, y, d, depth, face, note) in enumerate(p.holes):
             r = d / 2
-            for dx, dy in ((r, 0), (-r, 0), (0, r), (0, -r)):
-                q = (x + dx, y + dy)
+            ring = [(x, y)] + [(x + r * math.cos(k * math.pi / 4), y + r * math.sin(k * math.pi / 4)) for k in range(8)]
+            for q in ring:
                 if not point_in_poly(q, poly) or any(f[1] - 1e-9 < q[0] < f[1] + f[3] + 1e-9 and f[2] - 1e-9 < q[1] < f[2] + f[4] + 1e-9 for f in thru):
                     errs.append((p, "hole '%s' touches a void" % note[:40])); break
+            for (x2, y2, d2, _, _, note2) in p.holes[hi + 1:]:
+                if math.hypot(x2 - x, y2 - y) < r + d2 / 2 - 1e-9:
+                    errs.append((p, "hole '%s' overlaps hole '%s'" % (note[:30], note2[:30])))
+            overl = [f for f in p.feats if f[0] == "POCKET" and f[1] - r < x < f[1] + f[3] + r and f[2] - r < y < f[2] + f[4] + r]
             if depth is not None:
                 if depth >= p.t - 1e-9:
                     errs.append((p, "blind hole '%s' as deep as the part" % note[:30]))
-                for f in p.feats:
-                    if f[0] == "POCKET" and f[1] - r <= x <= f[1] + f[3] + r and f[2] - r <= y <= f[2] + f[4] + r and face == "other":
-                        if p.t - depth - f[5] < 0.03:
-                            errs.append((p, "bore '%s' (%.3f) meets pocket '%s' (%.3f) in %.3f stock" % (note[:30], depth, f[6][:30], f[5], p.t)))
+                for f in overl:
+                    if face == "other" and p.t - depth - f[5] < 0.03:
+                        errs.append((p, "bore '%s' (%.3f) meets pocket '%s' (%.3f) in %.3f stock" % (note[:30], depth, f[6][:30], f[5], p.t)))
+                    if face == "feature" and depth + f[5] > p.t - 0.03:
+                        errs.append((p, "blind hole '%s' (%.3f) in pocket '%s' (%.3f) breaks through %.3f stock" % (note[:30], depth, f[6][:30], f[5], p.t)))
+            else:
+                for f in overl:
+                    if f[7]:
+                        errs.append((p, "through hole '%s' runs under the panel in dado '%s'" % (note[:30], f[6][:30])))
         if min(p.L, p.W) > C["sheet_w"] or max(p.L, p.W) > C["sheet_l"]:
             errs.append((p, "does not fit a %g x %g sheet" % (C["sheet_w"], C["sheet_l"])))
     if errs:
@@ -273,20 +351,26 @@ def carcass(C, cab, W, H, D, variant, parts, extra=None):
             s.note("open back: gas and cords come through the open back; the cooktop guide's right-rear relief is satisfied")
         else:
             s.pocket(D - back_in - bt, t, bt, side_h - 2 * t + (t if variant == "sink" else 0), dd, "back dado 3/8 deep", mates=True)
-            holes_row(s, C["row_front"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "front 32 mm row, 5 x 13 mm")
-            holes_row(s, D - back_in - bt - C["row_rear"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "rear 32 mm row, 5 x 13 mm")
         if variant == "sink":
             s.pocket(0, side_h - 4, t, 4, dd, "front stretcher dado 3/8 deep", mates=True)
             s.pocket(D - back_in - bt - t, side_h - 4, t, 4, dd, "rear stretcher dado 3/8 deep", mates=True)
         sides[name[-1]] = s
+    # service openings and reliefs first, the 32 mm rows after them: a row position that lands in an
+    # opening (the Bosch hose opening in the sink base's DW side) or a dado is left out
     for (which, x, zloc, dia, depth, note) in extra.get("holes", []):
         sides[which].hole(x, zloc, dia, depth, note)
     for (which, x, y, w_, h_, note) in extra.get("thru", []):
         sides[which].thru(x, y, w_, h_, note)
     for (which, x0, x1, dep) in extra.get("side_relief", []):
         s = sides[which]
-        s.notch(0, x0, x1, s.W - dep, True)
-        s.note("drainboard relief: top edge lowered %.3f over x %.2f to %.2f, fingers removed there" % (dep, x0, x1))
+        # a fingered top edge is cut down to the bottom of its notches there: the top slab is cut away above
+        cut = max(dep, t) if variant not in ("sink", "oven") else dep
+        s.notch(0, x0, x1, s.W - cut, True)
+        s.note("drainboard relief: top edge lowered %.3f over x %.2f to %.2f%s" % (cut, x0, x1, ", fingers removed there" if cut > dep else ""))
+    if variant != "oven":
+        for s in sides.values():
+            holes_row(s, C["row_front"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "front 32 mm row, 5 x 13 mm")
+            holes_row(s, D - back_in - bt - C["row_rear"], C["row_first_z"], side_h - 1, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "rear 32 mm row, 5 x 13 mm")
     if variant == "corner":
         sides["A"].note("blind corner: the %g fixed panel closes the half toward the window wall" % C["corner_blind_w"])
     parts += [sides["A"], sides["B"]]
@@ -319,8 +403,9 @@ def carcass(C, cab, W, H, D, variant, parts, extra=None):
         back.corner_notches(dd)
         if variant == "sink":
             back.note("sits in the bottom dado and the side dados; top edge free behind the rear stretcher")
-        for (x, y, dia, note) in extra.get("back_holes", []):
-            back.hole(x, y, dia, None, note)
+        # the back's lower edge sits in the bottom slab's dado: part y = 0 is (t - dd) above the cabinet bottom
+        for (x, zloc, dia, note) in extra.get("back_holes", []):
+            back.hole(back.L / 2 if x == "centre" else x, zloc - (t - dd), dia, None, note)
         parts.append(back)
     if variant == "corner":
         parts.append(Part(cab, "blind_panel", C["corner_blind_w"], H, t, "ply"))
@@ -389,8 +474,10 @@ def drawer_boxes(C, cab, W, heights, parts, hw, sched):
 
 # ---------------------------------------------------------------- fridge column
 def fridge_column(C, cab, W, Hcol, D, parts, openings, H_upper, extra):
-    """From the ladder to the vented strip: end panels, floor (fingered), divider (tabs), shelf (captured),
-    upper back 2 off the wall (captured), top slab (fingered, stops at the back), toe board, vent strip."""
+    """One column from the ladder top to the vented strip: end panels, floor (fingered), divider (tabs),
+    shelf (captured), upper back 2 off the wall (captured), top slab (fingered, stops at the back), toe
+    board, vent strip. Hcol is the end panel height: floor slab + opening + shelf + upper section, so that
+    toe_h + Hcol + the vent strip = the ceiling. Part y = 0 on the end panels is the ladder top."""
     t, fw, bit, dd = C["ply_t"], C["finger_w"], C["bit_d"], C["dado_depth"]
     ch = C["fr_channel"]
     z_shelf = Hcol - H_upper - t
@@ -402,11 +489,13 @@ def fridge_column(C, cab, W, Hcol, D, parts, openings, H_upper, extra):
         end.notch(0, top_d, D, Hcol - t, True)
         end.pocket(0, z_shelf, D, t, dd, "shelf dado 3/8 deep, full depth", mates=True)
         end.pocket(D - ch - t, z_shelf + t, t, Hcol - z_shelf - 2 * t, dd, "upper back dado 3/8 deep, back 2 off the wall", mates=True)
-        holes_row(end, C["row_front"], z_shelf + t + 1.5, Hcol - 1.5, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "front 32 mm row (upper section), 5 x 13 mm")
         end.note("to the wall; closes the air channel at the side; lower section open-backed, upper back 2 off the wall")
+        end.note("opening %.3f clear between the floor slab top (y %.3f) and the shelf underside (y %.3f)" % (z_shelf - t, t, z_shelf))
         ends[nm] = end
     for (which, x, zloc, dia, depth, note) in extra.get("holes", []):
         ends[which].hole(x, zloc, dia, depth, note)
+    for end in ends.values():
+        holes_row(end, C["row_front"], z_shelf + t + 1.5, Hcol - 1.5, C["row_pitch"], C["row_hole_d"], C["row_hole_depth"], "front 32 mm row (upper section), 5 x 13 mm")
     parts += [ends["A"], ends["B"]]
     floor = Part(cab, "floor", D, W, t, "ply"); floor.fingers({"bottom": (t, fw, False), "top": (t, fw, False)}, bit)
     shelf = Part(cab, "shelf", D, W - 2 * t + 2 * dd, t, "ply")
@@ -439,8 +528,9 @@ def fridge_column(C, cab, W, Hcol, D, parts, openings, H_upper, extra):
     topp = [(x, div.W - y) for (x, y) in tabbed(0, +1)]
     div.poly = dedupe(bottom + list(reversed(topp)))
     div.note("tabs %g x 3/4 into the floor and shelf slots, glued; the slots carry dogbones" % tw)
+    # part y = 0 is the lower tab's tip, at the floor slab's underside = the ladder top, like the end panels
     for (x, zloc, dia, note) in extra.get("divider_holes", []):
-        div.hole(x, zloc + t, dia, None, note)
+        div.hole(x, zloc, dia, None, note)
     parts.append(div)
     uback = Part(cab, "upper_back", W - 2 * t + 2 * dd, H_upper - t + 2 * dd, t, "ply")
     uback.corner_notches(dd)
@@ -515,13 +605,32 @@ def main():
     sink_drain = next((a for a in K["appliances"] if a[0] == "SINK_DRAIN"), None)
     sink = next((a for a in K["appliances"] if a[0] == "SINK"), None)
 
+    def part_z0(c):
+        """Height above the finished floor of y = 0 on the cabinet's side panels (where service holes are
+        drawn): the cabinet bottom for boxes on the ladder; the floor for the oven cabinet, whose sides run
+        to the floor; the ladder top for the fridge column's end panels and divider."""
+        if c[0] == "W_OVEN30": return 0.0
+        if c[7] == "tall": return K["toe_h"]
+        return c[6]
+
     svc, svc_rows = {}, []
     for s in C["services"]:
         sid, cabn, side, x, zabs, dia, note = s
         c = byid[cabn]
-        zloc = zabs - c[6]
+        zloc = zabs - part_z0(c)
         svc.setdefault(cabn, []).append((side, x, zloc, dia, note))
         svc_rows.append([sid, cabn, side, "%.3f" % x, "%.3f" % zabs, "%.3f" % zloc, ("rect 3.5 x 2.5" if dia == 0 else "%.2f dia" % dia), note])
+    # a hole X_IN is the far side of hole X, through the neighbouring panel: same distance from the wall,
+    # same height above the finished floor, same size, else the cord cannot pass
+    for b in C["services"]:
+        if not b[0].endswith("_IN"): continue
+        a = next((s for s in C["services"] if s[0] == b[0][:-3]), None)
+        if a is None:
+            print("SERVICES FAIL %s has no %s" % (b[0], b[0][:-3]), file=sys.stderr); sys.exit(2)
+        da, db = byid[a[1]][5] - a[3], byid[b[1]][5] - b[3]
+        if abs(da - db) > 1e-6 or abs(a[4] - b[4]) > 1e-6 or abs(a[5] - b[5]) > 1e-6:
+            print("SERVICES FAIL %s and %s: from the wall %.3f vs %.3f, z %.3f vs %.3f, size %.3f vs %.3f"
+                  % (a[0], b[0], da, db, a[4], b[4], a[5], b[5]), file=sys.stderr); sys.exit(2)
 
     parts, cabs, hw, sched = [], [], [], []
     for c in K["cabinets"]:
@@ -554,15 +663,26 @@ def main():
             carcass(C, cid, W, H, D, "oven", parts, extra)
         elif kind == "tall":
             frs = sorted([(a[3] - pos, a[4]) for a in K["appliances"] if a[0].startswith("FR")])
-            upper = byid["S_FRIDGE_TOP"][4]
-            fridge_column(C, cid, W, H, D, parts, frs, upper, extra); rec["ladder"] = True
+            top = byid["S_FRIDGE_TOP"]
+            upper = top[4]
+            # the column stands on the ladder: end panels from the ladder top to the top of the upper section
+            col_h = z + H + upper - K["toe_h"]
+            if abs(z + H - top[6]) > 1e-6 or abs(top[6] + upper + C["fr_top_vent"] - K["ceiling_h"]) > 1e-6:
+                print("DATA FAIL fridge column: bay top %.3f, upper section %.3f to %.3f, vent strip %.3f, ceiling %.3f do not stack"
+                      % (z + H, top[6], top[6] + upper, C["fr_top_vent"], K["ceiling_h"]), file=sys.stderr); sys.exit(2)
+            for a in K["appliances"]:
+                if a[0].startswith("FR") and (abs(a[7] - (K["toe_h"] + C["ply_t"])) > 1e-6 or abs(a[7] + a[5] + C["ply_t"] - (z + H)) > 1e-6):
+                    print("DATA FAIL %s: opening %.3f to %.3f is not floor slab top (%.3f) to shelf underside (%.3f)"
+                          % (a[0], a[7], a[7] + a[5], K["toe_h"] + C["ply_t"], z + H - C["ply_t"]), file=sys.stderr); sys.exit(2)
+            fridge_column(C, cid, W, col_h, D, parts, frs, upper, extra); rec["ladder"] = True
         elif cid == "S_FRIDGE_TOP":
             continue
         elif kind == "base":
             variant = "sink" if cid.startswith("S_SB") else "corner" if "CORNER" in cid else "base"
             if variant == "corner": extra["shelves"] = 1
             if cid == "S_B8":
-                extra["back_holes"] = [(W / 2 - 0.75, 19.875 - K["toe_h"] - 0.75, 1.25, "cords from the void behind the back into the compartment; receptacles on this back at 19 7/8 and 23 3/8")]
+                # z above the cabinet bottom; carcass() converts to the back's own origin
+                extra["back_holes"] = [("centre", 23.375 - K["toe_h"], 1.25, "fridge cords from the void behind the back into the compartment, beside the fridge receptacle box; receptacles on this back at 19 7/8 (DW) and 23 3/8 (fridges), two 2 x 4 utility boxes side by side")]
             carcass(C, cid, W, H, D, variant, parts, extra); rec["ladder"] = True
         elif kind == "filler" and "WALLFILL" in cid:
             parts.append(Part(cid, "scribe_strip", H, W, C["ply_t"], "ply"))
@@ -633,8 +753,8 @@ def main():
     with open(os.path.join(out, "services.csv"), "w", newline="") as f:
         w = csv.writer(f); w.writerow(["id", "cabinet", "side (A low-pos, B high-pos, D divider)", "x from the front", "z above finished floor", "z on the part", "size", "purpose"])
         for r in svc_rows: w.writerow(r)
-        w.writerow(["RECEPT_DW", "S_B8", "back", "", "19.875", "", "duplex", "DW receptacle on the back, compartment behind drawers 1 and 2 (18 deep)"])
-        w.writerow(["RECEPT_FR", "S_B8", "back", "", "23.375", "", "duplex", "fridge receptacle, lower quarter of the fridge opening (5 5/8 + 71/4)"])
+        w.writerow(["RECEPT_DW", "S_B8", "back", "", "19.875", "", "duplex in a 2 x 4 utility box", "DW receptacle on the back, compartment behind drawers 1 and 2 (18 deep); the back is 7 1/8 wide, so the two boxes (centres 3 1/2 apart) go side by side, not one above the other"])
+        w.writerow(["RECEPT_FR", "S_B8", "back", "", "23.375", "", "duplex in a 2 x 4 utility box", "fridge receptacle, lower quarter of the fridge opening (5 5/8 + 71/4); beside the DW box; the cord hole in the back is between them at this height"])
         w.writerow(["JBOX_OV", "W_D30", "back", "", "19.875", "", "4x4 box", "oven junction box, 240 V 20 A per the oven manual and nameplate [verify], behind drawer 2 (18 deep)"])
         w.writerow(["RECEPT_CT", "W_D30", "back", "", "19.875", "", "single", "cooktop 120 V, within 24 of the cooktop's right rear cutout corner (pos 88 7/16): place within pos 89 to 95"])
         w.writerow(["GAS_VALVE", "W_D30", "compartment", "", "31.25", "", "1/2 shutoff", "behind drawer 1 (15 deep); gas stub through the wall into the compartment per the cooktop guide, 5 below the counter underside"])
@@ -709,7 +829,11 @@ from it before cutting cabinets. Glue: PVA on bare plywood; the prefinished face
         for (cab, i, zb, zt, bw, bh, depth, iw, side_low, screw, row_z) in sched:
             f.write("  %-8s front %d (from the top): front %.3f to %.3f; box %.4f x %g x %g deep, inside %.1f mm; side lower edge %.3f; runner screw %.3f -> row hole at %.3f\n" % (cab, i, zb, zt, bw, bh, depth, iw, side_low, screw, row_z))
         f.write("  runner elevations derive from box_front_up and runner_fix_dz in construction.scad, both [verify] against the 563H drawing\n")
-        f.write("\nvalidation: outlines simple and counterclockwise, no backtracking, holes in material, bores clear of opposite pockets, parts fit the sheet: PASS\n")
+        f.write("\nvalidation: outlines simple and counterclockwise, no backtracking, holes in material and clear of each other, bores clear of pockets on either face, through holes clear of panel dados, paired service holes aligned, fridge column stacks to the ceiling, parts fit the sheet: PASS\n")
+        skipped = [(p.cab, p.name, n) for p in parts for n in p.notes if "no hole at z" in n]
+        if skipped:
+            f.write("32 mm row positions left out (in an opening, a dado or another hole):\n")
+            for cab, name, n in skipped: f.write("  %s %s: %s\n" % (cab, name, n))
         f.write("layout checks (draw.py) are about positions; this file is about parts. Neither is a physical test.\n")
         f.write("fridge column: one unit on the ladder, to the LG cabinet figure; air: toe grille > ladder cavity > floor notch > channel > shelf slot > behind the upper back > over the top > vent strip.\n")
         f.write("oven cabinet: open back, floor at %.3f on a toe board and a rear ledger, no top (front rail + rear stretcher), clamp relief on the sides.\n" % C["ov_floor"])

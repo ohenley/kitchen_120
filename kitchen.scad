@@ -105,7 +105,6 @@ module appliances_all() {
     on_wall("south", fr2[3],              fr2[4] + 3, 45.3, 0, fr2[8]) cube([fr2[4] + 3, 45.3, 1]);   // sweep over S_B8
   }
 }
-}
 
 // ---- scene ------------------------------------------------------------
 if (show_walls)      walls();

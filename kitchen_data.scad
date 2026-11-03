@@ -51,18 +51,21 @@ electrical = [
 // Fridge bay [mfr, LG spec sheet p.2 cabinet figure]: 3 wall filler | end panel 3/4 | FR1 opening 570 mm = 22 7/16 | divider 3/4 | FR2 opening 22 7/16 | end panel 3/4 = ends at 50 1/8.
 // Clear height 1802 mm = 70 15/16 (71 used) above a raised floor; 50 mm channel behind the unit; floor notch, toe grille and top slot sizes in construction.scad.
 // Bay depth 25 1/4 = 2 channel + 22 1/2 body + 3/4 panel, panel face flush with the bay front, 1/2 proud of the drawer fronts.
+// The column is one piece from the ladder to the ceiling: ladder 4 7/8 | floor slab 3/4 | opening 71 | shelf 3/4 = 77 3/8
+// | upper section | vented strip = 94. The strip carries the exhaust slots (construction.scad), so it sets the upper section's height.
+fr_vent_h   = 3.0;            // [choice] vented strip at the ceiling, 3 high: room for two 420 x 55 mm slots (LG asks over 200 cm2 each)
 cabinets = [
   // window wall (south in this file), east to west
   ["S_WALLFILL",   "south",   0.0,    3.0,  ceiling_h, 24, 0,      "filler", "[choice] 3 off the east wall, full height, scribed"],
   ["S_FRIDGE_BAY", "south",   3.0,   47.125, 77.375, 25.25, 0,     "tall",   "[mfr] box: 2 end panels, floor slab on the ladder, 1 divider, shelf. Openings 22 7/16 x 71, floor at 5 5/8. Toe grilles, floor notches, shelf slots per LG, see construction.scad"],
-  ["S_FRIDGE_TOP", "south",   3.0,   47.125, ceiling_h - 77.375 - 1.5, 23.25, 77.375, "wall", "[choice] cabinet over the fridges, 23 1/4 deep: the 2 channel continues behind it to a 1 1/2 vented strip at the ceiling"],
+  ["S_FRIDGE_TOP", "south",   3.0,   47.125, ceiling_h - 77.375 - fr_vent_h, 23.25, 77.375, "wall", "[choice] upper section of the fridge column, 23 1/4 deep: the 2 channel continues behind it to the vented strip at the ceiling (fr_vent_h). Two doors, Bofronts custom"],
   ["S_B8",         "south",  50.125,  7.875, 30, 24, toe_h,        "base",   "[choice] custom pullout, what is left between the bay and the DW. DW outlet here"],
   ["S_DW",         "south",  58.0,   24.0,  30, 24, toe_h,         "zone",   "dishwasher opening, see DW"],
   ["S_SB36",       "south",  82.0,   36.0,  30, 24, toe_h,         "base",   "[label] 36 sink base, centred on WIN_S2 at 100, bowls 85 to 115 inside. No top drawer"],
   ["S_B24",        "south", 118.0,   24.0,  30, 24, toe_h,         "base",   "[label] 24 drawer base. Drainboard rides over 118 to 132 1/4"],
   ["S_GAP",        "south", 142.0,    4.5,  30, 24, toe_h,         "zone",   "[label] pull-away gap of the blind corner, under the counter. Planner: 2 3/4 + frame"],
   // oven wall (west), from the window wall
-  ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[choice] custom-cut blind corner box, 47 wide, built like the others. NOT the IKEA article (505.967.57 is 50 wide and would push the run past 120). Door section 24 (Bofronts standard 24 x 30), fixed blind panel 23 toward the window wall. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
+  ["W_CORNER47",   "west",    0.0,   47.0,  30, 24, toe_h,         "base",   "[choice] custom-cut blind corner box, 47 wide, built like the others. NOT the IKEA article (505.967.57 is 50 wide and would push the run past 120). Fixed blind panel 24 7/8 toward the window wall (corner_blind_w in construction.scad: the door must start past the window-wall fronts' plane at 24 3/4), door 22 1/8 x 30, Bofronts custom. Its side is what the window wall sees at 146 1/2 to 170 1/2"],
   ["W_B12",        "west",   47.0,   12.0,  30, 24, toe_h,         "base",   "[label] standard 12. Oven centre lands at 74, receptacles 13 and 11 1/2 from the cooktop edges"],
   ["W_OVEN30",     "west",   59.0,   30.0,  30, 24, toe_h,         "zone",   "[label] oven cabinet, centre 74. Sides notched 3/16 in the top 3 1/4 for the cooktop cutout. Floor at 4 5/8 from the finished floor, sides run to the floor, see OV"],
   ["W_D30",        "west",   89.0,   30.0,  30, 24, toe_h,         "base",   "[choice] 3 drawers, finished end toward the corridor"],
@@ -86,8 +89,8 @@ appliances = [
      "[mfr] 1200 x 500 mm, to be welded into the stainless top (rim 85 to 132 1/4) if the fabricator accepts 0.8 mm; else the fabricator's bowls on the same layout, 0.8 mm 304, sound pad underneath. This box is the 30 wide bowl region only; the drainboard is SINK_DRAIN. [choice] bowl region centred at 100 = faucet on WIN_S2, assumes the holes are centred behind the bowls. Bowl depth 8 1/2 is a GUESS, measure. Front rim 2 behind the counter front."],
   ["SINK_DRAIN", "drainboard of SINK", "south", 115.0, 17.25, 1.5, 19.6875, counter_h - 1.5, base_d + counter_oh - 2 - 19.6875,
      "[choice] drainboard depression below the rim: 1 1/2 is a GUESS, measure. If it is deeper than the slab (1 1/8) the top drawer of S_B24 loses that much"],
-  ["FAUCET", "Kingston Brass KS413", "south", 94.625, 10.75, 9.25, 10.3125, 37.625, -0.5,
-     "[mfr] wall mount, 8 centres, union axis 39 1/2 above the SUBFLOOR (as roughed in), about 39 above the finished floor. Centred on WIN_S2 at 100. Body 10 3/4 wide incl. 2 3/4 escutcheons, 7 7/8 above axis to spout top, tip 10 5/16 from the tile face. off -0.5: the tile face above the counter sits about 1/2 in front of the cabinet-level wall. Stubs to be cut after tile (3/8 drywall + thinset + 1/4 to 1/2 tile)."],
+  ["FAUCET", "Kingston Brass KS413", "south", 94.625, 10.75, 9.25, 10.3125, 37.625, 0.5,
+     "[mfr] wall mount, 8 centres (unions at 96 and 104), union axis 39 1/2 above the SUBFLOOR (as roughed in), about 39 above the finished floor [verify: measure the finished floor build-up]. Centred on WIN_S2 at 100. Body 10 3/4 wide incl. 2 3/4 escutcheons, 7 7/8 above axis to spout top, tip 10 5/16 from the tile face. off +0.5: the tile face above the counter sits about 1/2 IN FRONT of the cabinet-level wall (y = 0), so the faucet starts at y = +1/2 and the tip lands 10 13/16 from the wall. [verify] the KS413 drawing may put the 7 7/8 and 4 5/16 heights on a datum 1 3/16 above the union axis; if so the spout top is 48 1/16, not 46 7/8, and the box height is 10 7/16. Stubs to be cut after tile (3/8 drywall + thinset + 1/4 to 1/2 tile)."],
   ["CT",  "KitchenAid KCGG530PBL", "west",   59.5625, 28.875,  3.25,    19.8125, counter_h - 3.25, west_offset + cutout_rear,
      "[mfr] countertop cutout 28 7/8 W x 19 13/16 D, front edge 2 3/4 behind the counter front. Burner box 28 1/4 x 19 1/4 x 3 1/4 (4 1/4 at the gas inlet, right rear). Counter >= 25 3/8 deep. 120 V outlet within 24 of the right rear corner. 34 to an uncovered cabinet above, 18 to upper cabinets within 12 3/4 either side."],
   ["OV",  "KitchenAid KOES730SBE", "west",   59.75,  28.5,    27.75,   24.0,    counter_h - 31.375, west_offset,

@@ -41,8 +41,8 @@ fr_notch_from   = 300 / 25.4;   // [mfr] notch starts 300 from the east side of 
 fr_top_slot_w   = 400 / 25.4;   // [mfr] shelf slot, centred on each unit, at the rear
 fr_top_slot_d   = 50 / 25.4;    // [mfr]
 fr_channel      = 2.0;          // [mfr] 50 mm behind the unit, carried up behind the upper section's back
-fr_top_vent     = 3.0;          // [choice] vented strip at the ceiling, 3 high, two slots of 420 x 55 mm (230 cm2 each, LG asks over 200 net)
-fr_vent_slot_w  = 420 / 25.4;
+fr_top_vent     = fr_vent_h;    // vented strip height, from kitchen_data.scad (it sets the upper section's height too)
+fr_vent_slot_w  = 420 / 25.4;   // [choice] two slots of 420 x 55 mm in the strip (231 cm2 each, LG asks over 200 net), open grille
 fr_vent_slot_h  = 55 / 25.4;
 fr_tab_w        = 3.0;          // [choice] divider tabs into through slots in floor and shelf, 3 per edge
 fr_panel_w      = 23.0625;      // [verify] door panel width for two units on a 3/4 divider: opening + divider - 1/8 gap (LG: 592 on a 600 single cabinet); confirm with LG's hinge bracket geometry
@@ -83,16 +83,19 @@ drawer_depth = [
 ];
 
 // ---- services: holes through cabinet sides and panels ------------------------
-// [id, cabinet, side ("A" low-pos end, "B" high-pos end), x from the front, z above the FINISHED FLOOR, dia, purpose]
+// [id, cabinet, side ("A" low-pos end, "B" high-pos end, "D" the fridge divider), x from the front, z above the FINISHED FLOOR, dia, purpose]
+// z is always above the finished floor; cutlist.py converts to each part's own origin (oven sides run to the floor,
+// the fridge end panels and divider start at the ladder top). An id X_IN is the far side of hole X through the
+// neighbouring panel: cutlist.py checks the pair is at the same distance from the wall, the same z and the same size.
 // Rule [brief]: plugs in side cabinets, never behind an appliance; receptacles at mid-height, fridge receptacles at the lower quarter.
 // Appliance-side passages follow the appliance documents (Bosch rear corner, KitchenAid upper rear), the receptacle sits
 // in the side cabinet's service compartment at the rule's height.
 services = [
-  ["DW_CORD",    "S_B8",        "B", 21.0,  6.875, 1.25, "Bosch cord out of the DW's rear bottom into S_B8's compartment; receptacle at 19 7/8 on S_B8's back"],
-  ["DW_HOSES",   "S_SB36",      "A", 20.5,  7.125, 0,    "rect 3.5 x 2.5, Bosch install p.10, hoses and drain to the sink"],
-  ["FR_CORD_2",  "S_FRIDGE_BAY","B", 24.25, 23.375, 1.25, "FR2 cord through the end panel, in the channel, to S_B8's void; receptacle at 23 3/8 on S_B8's back [verify LG cord length]"],
-  ["FR_CORD_1",  "S_FRIDGE_BAY","D", 24.25, 23.375, 1.25, "FR1 cord through the divider into FR2's channel, then as FR_CORD_2 [verify LG cord length, about 50 in of run]"],
-  ["FR_CORD_IN", "S_B8",        "A", 23.0,  23.375, 1.25, "into S_B8's 2 void behind its back; the cords come through S_B8's back to the receptacle"],
+  ["DW_CORD",    "S_B8",        "B", 20.5,  6.875, 1.25, "Bosch cord out of the DW's rear bottom into S_B8's compartment, just in front of S_B8's back (2 in from the wall); receptacle at 19 7/8 on S_B8's back"],
+  ["DW_HOSES",   "S_SB36",      "A", 20.5,  7.125, 0,    "rect 3.5 x 2.5, Bosch install p.10, hoses and drain to the sink; the rear 32 mm row skips this opening"],
+  ["FR_CORDS",   "S_FRIDGE_BAY","B", 24.25, 23.375, 1.25, "both fridge cords through the end panel, in the channel, into S_B8's void; receptacle at 23 3/8 on S_B8's back [verify LG cord length]"],
+  ["FR1_CORD",   "S_FRIDGE_BAY","D", 24.25, 23.375, 1.25, "FR1 cord through the divider into FR2's channel, then as FR_CORDS [verify LG cord length, about 50 in of run]"],
+  ["FR_CORDS_IN","S_B8",        "A", 23.0,  23.375, 1.25, "into S_B8's 2 void behind its back; the cords come through S_B8's back to the receptacle"],
   ["OV_CABLE",   "W_OVEN30",    "B", 21.5,  31.875, 1.25, "oven conduit to the junction box, upper rear corner per the oven manual"],
   ["OV_CABLE_IN","W_D30",       "A", 21.5,  31.875, 1.25, "same hole on W_D30's side; junction box at 19 7/8 in the compartment behind drawer 2"],
   ["CT_GAS",     "W_OVEN30",    "B", 17.0,  31.25,  1.25, "gas flex to the cooktop manifold (1 7/16 from the cooktop's right edge, 4 3/8 from its rear), above the oven body"],

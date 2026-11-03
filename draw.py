@@ -128,6 +128,14 @@ def checks(ns):
     for c in cabs:
         if c[7] == "base" and abs(c[6] + c[4] + ns["counter_t"] - ns["counter_h"]) > 0.01:
             fails.append(f"{c[0]}: top of box + slab = {c[6] + c[4] + ns['counter_t']:.3f}, counter_h is {ns['counter_h']}")
+    # fridge column: ladder | floor slab | opening | shelf = bay top; upper section; vented strip = ceiling
+    top = byid["S_FRIDGE_TOP"]
+    if abs(bay[6] + bay[4] - top[6]) > 0.01: fails.append(f"S_FRIDGE_TOP starts at {top[6]}, bay top is {bay[6] + bay[4]}")
+    if abs(top[6] + top[4] + ns["fr_vent_h"] - ns["ceiling_h"]) > 0.01:
+        fails.append(f"fridge column: upper section top {top[6] + top[4]:.3f} + vent strip {ns['fr_vent_h']} is not the ceiling {ns['ceiling_h']}")
+    for a in (fr1, fr2):
+        if abs(a[7] - (ns["toe_h"] + 0.75)) > 0.01 or abs(a[7] + a[5] + 0.75 - (bay[6] + bay[4])) > 0.01:
+            fails.append(f"{a[0]} opening {a[7]}..{a[7] + a[5]} is not ladder + 3/4 floor slab to the 3/4 shelf under the bay top {bay[6] + bay[4]}")
     # cooktop rear clearance to the wall finish, 2 7/8 to a combustible surface
     rear = ns["west_counter_oh"] + ns["base_d"] - 2.75 - 19.8125 + ns["west_offset"]
     print(f"cooktop cutout rear edge to the bare wall: {rear:.4f} (needs 2.875 to a combustible surface, after the wall finish)")
