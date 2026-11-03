@@ -95,12 +95,16 @@ module appliances_all() {
       label(id, w);
     }
   }
-  // fridge doors open 90 deg, both hinged right: footprint 24 4/5 along the wall, 45 3/10 deep,
-  // anchored on the opening edge toward the oven corner (west), overhanging 2 2/5 toward the east wall.
+  // fridge doors open 90 deg, handles at the centre: FR1 hinged on the east (wall side), FR2 hinged on the
+  // west. Each sweep: the 22 7/16 door in front of its own opening plus 3 past the hinge side
+  // (LG: 24 4/5 wide open), 45 3/10 deep from the back of the bay.
+  fr1 = [for (a = appliances) if (a[0] == "FR1") a][0];
+  fr2 = [for (a = appliances) if (a[0] == "FR2") a][0];
   color([0.9, 0.2, 0.2, 0.15]) {
-    on_wall("south",  3.75 + 22.375 - 24.8, 24.8, 45.3, 0, 0.75) cube([24.8, 45.3, 1]);
-    on_wall("south", 26.875 + 22.375 - 24.8, 24.8, 45.3, 0, 0.75) cube([24.8, 45.3, 1]);
+    on_wall("south", fr1[3] - 3,          fr1[4] + 3, 45.3, 0, fr1[8]) cube([fr1[4] + 3, 45.3, 1]);   // sweep toward the east wall
+    on_wall("south", fr2[3],              fr2[4] + 3, 45.3, 0, fr2[8]) cube([fr2[4] + 3, 45.3, 1]);   // sweep over S_B8
   }
+}
 }
 
 // ---- scene ------------------------------------------------------------

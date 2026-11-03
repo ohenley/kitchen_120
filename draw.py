@@ -116,6 +116,12 @@ def checks(ns):
         lo, hi = c[2] + inset, c[2] + c[3] - inset
         if a[3] < lo - 0.01 or a[3] + a[4] > hi + 0.01:
             fails.append(f"{a[0]} {a[3]:.3f}..{a[3] + a[4]:.3f} outside the interior of {c[0]} {lo:.3f}..{hi:.3f}")
+    # the two fridge openings: bay = panel | FR1 | divider | FR2 | panel, panels 3/4
+    bay = byid["S_FRIDGE_BAY"]; fr1 = [a for a in ns["appliances"] if a[0] == "FR1"][0]; fr2 = [a for a in ns["appliances"] if a[0] == "FR2"][0]
+    if abs(fr1[3] - (bay[2] + 0.75)) > 0.01: fails.append(f"FR1 starts at {fr1[3]}, bay panel ends at {bay[2] + 0.75}")
+    if abs(fr2[3] - (fr1[3] + fr1[4] + 0.75)) > 0.01: fails.append(f"FR2 starts at {fr2[3]}, divider ends at {fr1[3] + fr1[4] + 0.75}")
+    if abs(bay[3] - (fr1[4] + fr2[4] + 2.25)) > 0.01: fails.append(f"bay width {bay[3]} is not 2 openings + 3 panels = {fr1[4] + fr2[4] + 2.25}")
+    if fr1[3] - 3 < 0: fails.append("FR1 door sweep reaches past the east wall")
     ct = [a for a in ns["appliances"] if a[0] == "CT"][0]; ov = [a for a in ns["appliances"] if a[0] == "OV"][0]
     if abs((ct[3] + ct[4] / 2) - (ov[3] + ov[4] / 2)) > 0.01: fails.append("cooktop and oven cutouts are not on the same centre")
     # counter height: every base top + slab must equal counter_h
